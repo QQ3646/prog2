@@ -1,28 +1,32 @@
 #include <iostream>
 #include "Matrix.h"
 
+enum namesOfMatrix {
+    A, B, C, D,
+};
+
 int main() {
-    Matrix a(2);
-    int size = 2;
-    int* d = new int[2];
-    for (int i = 0; i < size; i++) {
-            scanf("%d", &d[i]);
+    int size;
+    scanf("%d", &size);
+    int k;
+    scanf("%d", &k);
+    int*** buffer = new int**[4];
+    for (int i = 0; i < 4; ++i) {
+        buffer[i] = new int*[size];
+        for (int j = 0; j < size; ++j)
+            buffer[i][j] = new int[size];
     }
-    Matrix b(2, d);
-    +b;
-    +(a + b);
-    int** mn = new int*[size];
-    for (int i = 0; i < size; i++) {
-        mn[i] = new int[size];
+    for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < size; ++j) {
-            scanf("%d", &mn[i][j]);
+            for (int l = 0; l < size; ++l) {
+                scanf("%d", &buffer[i][j][l]);
+            }
         }
     }
-    Matrix another(2, mn);
-    +another;
-    if (another == (a + b))
-        printf("yep");
-    else
-        printf("nope");
-    +~another;
+    // Пытался через массив матриц, но выдавало сигсег, так что лучше так
+    Matrix a = Matrix(size, buffer[0]);
+    a[1][1] = 5;
+    for (int i = 0; i < size; ++i) {
+        printf("%d ", a[1][i]);
+    }
 }
