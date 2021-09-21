@@ -1,0 +1,24 @@
+class Matrix {
+    int size;
+    int** values;
+public:
+    Matrix();
+
+    Matrix(int size);
+
+    Matrix(int size, int* values);
+
+    Matrix(int size, int** values);
+
+    Matrix operator+(const Matrix& a) const;
+
+    bool operator==(const Matrix& b);
+
+    void operator+();
+
+    Matrix operator*(const Matrix& b);
+    Matrix operator~();
+
+    ~Matrix();
+};
+
