@@ -25,8 +25,15 @@ int main() {
     }
     // Пытался через массив матриц, но выдавало сигсег, так что лучше так
     Matrix a = Matrix(size, buffer[0]);
-    a[1][1] = 5;
-    for (int i = 0; i < size; ++i) {
-        printf("%d ", a[1][i]);
-    }
+    Matrix b = Matrix(size, buffer[1]);
+    Matrix c = Matrix(size, buffer[2]);
+    Matrix d = Matrix(size, buffer[3]);
+    Matrix km = Matrix(size, k);
+    +((a + b * ~c + km) * ~d);
+//TEST
+//    a[1][1] = 5;
+//
+//    for (int i = 0; i < size; ++i) {
+//        printf("%d ", a[1][i]);
+//    }
 }

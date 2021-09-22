@@ -1,6 +1,7 @@
 class Matrix {
     int size;
     int** values;
+    int* column;
 public:
     Matrix();
 

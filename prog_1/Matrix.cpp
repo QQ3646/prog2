@@ -2,35 +2,39 @@
 #include "iostream"
 
 Matrix::Matrix() {
-    this->size = 0;
-    this->values = nullptr;
+    size = 0;
+    values = nullptr;
+    column = nullptr;
 }
 
 Matrix::Matrix(int size) : Matrix(size, 1) {}
 
 Matrix::Matrix(int size, int value) : size(size) {
-    this->values = new int*[size];
+    values = new int*[size];
     for (int i = 0; i < size; i++) {
-        this->values[i] = new int[size];
+        values[i] = new int[size];
         for (int j = 0; j < size; ++j)
-            this->values[i][j] = 0;
-        this->values[i][i] = value;
+            values[i][j] = 0;
+        values[i][i] = value;
     }
+    column = nullptr;
 }
 // Мне не нравится эти одинаковые конструкторы, но что поделать
 // Пытался в верхнем вызвать нижний конструктор, но это не сработало так как мне надо
-Matrix::Matrix(int size, int* values) : size(size) {
-    this->values = new int*[size];
+Matrix::Matrix(int size, int* value) : size(size) {
+    values = new int*[size];
     for (int i = 0; i < size; i++) {
-        this->values[i] = new int[size];
+        values[i] = new int[size];
         for (int j = 0; j < size; ++j)
-            this->values[i][j] = 0;
-        this->values[i][i] = values[i];
+            values[i][j] = 0;
+        values[i][i] = value[i];
     }
+    column = nullptr;
 }
 
-Matrix::Matrix(int size, int** values) : size(size) {
-    this->values = values;
+Matrix::Matrix(int size, int** value) : size(size) {
+    values = value;
+    column = nullptr;
 }
 
 // Получение минора
@@ -62,7 +66,7 @@ Matrix Matrix::operator+ (const Matrix& a) const {
     for (int i = 0; i < size; i++) {
         newValues[i] = new int[size];
         for (int j = 0; j < size; j++)
-            newValues[i][j] = this->values[i][j] + a.values[i][j];
+            newValues[i][j] = values[i][j] + a.values[i][j];
     }
     return Matrix(size, newValues);
 }
@@ -73,16 +77,16 @@ bool Matrix::operator==(const Matrix &b) {
         return false;
     for (int i = 0; i < size; i++)
         for (int j = 0; j < size; j++)
-            if (this->values[i][j] != b.values[i][j])
+            if (values[i][j] != b.values[i][j])
                 return false;
     return true;
 }
 
 // Вывод матрицы на экран
 void Matrix::operator+() {
-    for (int i = 0; i < this->size; ++i) {
-        for (int j = 0; j < this->size; ++j) {
-            printf("%d ",  this->values[i][j]);
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            printf("%d ",  values[i][j]);
         }
         printf("\n");
     }
@@ -96,7 +100,7 @@ Matrix Matrix::operator*(const Matrix &b) const {
         for (int j = 0; j < size; j++) {
             int tempSum = 0;
             for (int k = 0; k < size; ++k) {
-                tempSum += this->values[i][k] * b.values[k][j];
+                tempSum += values[i][k] * b.values[k][j];
             }
             newValues[i][j] = tempSum;
         }
@@ -111,7 +115,11 @@ int* Matrix::operator[](int num) {
 
 // Взятие столбца
 int* Matrix::operator()(int num) {
-
+    column = new int[size];
+    for (int i = 0; i < size; ++i) {
+        column[i] = values[i][num - 1];
+    }
+    return column;
 }
 
 // Транспонирование матрицы
@@ -120,7 +128,7 @@ Matrix Matrix::operator~() {
     for (int i = 0; i < size; ++i) {
         newValues[i] = new int[size];
         for (int j = 0; j < size; ++j)
-            newValues[i][j] = this->values[j][i];
+            newValues[i][j] = values[j][i];
     }
     return Matrix(size, newValues);
 }
@@ -129,4 +137,5 @@ Matrix::~Matrix() {
     for (int i = 0; i < size; ++i)
         delete[] values[i];
     delete[] values;
+    delete[] column;
 }
