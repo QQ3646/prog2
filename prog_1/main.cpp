@@ -1,32 +1,47 @@
 #include <iostream>
 #include "Matrix.h"
+#include "cstdio"
 
-enum namesOfMatrix {
+std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
+    for (int i = 0; i < matrix.size; ++i) {
+        for (int j = 0; j < matrix.size; ++j)
+            ostream << matrix.values[i][j] << " ";
+        ostream << std::endl;
+    }
+    return ostream;
+}
+
+enum MatrixNames {
     A, B, C, D,
 };
 
 int main() {
-    int size;
-    scanf("%d", &size);
-    int k;
-    scanf("%d", &k);
-    int*** buffer = new int**[4];
-    for (int i = 0; i < 4; ++i) {
-        buffer[i] = new int*[size];
-        for (int j = 0; j < size; ++j)
-            buffer[i][j] = new int[size];
+    const int MATRIX_COUNT = 4;
+
+    int outputMode;
+    std::cin >> outputMode;
+
+    if (outputMode == 1) {
+        std::freopen("input.txt", "r", stdin);
+        std::freopen("output.txt", "w", stdout);
     }
-    for (int i = 0; i < 4; ++i) {
+
+    int size, k;
+    std::cin >> size >> k;
+
+    int ***buffer = new int **[MATRIX_COUNT];
+    Matrix *matrixArr = new Matrix[MATRIX_COUNT];
+    for (int i = 0; i < MATRIX_COUNT; ++i) {
+        buffer[i] = new int *[size];
         for (int j = 0; j < size; ++j) {
-            for (int l = 0; l < size; ++l) {
-                scanf("%d", &buffer[i][j][l]);
-            }
+            buffer[i][j] = new int[size];
+            for (int l = 0; l < size; ++l)
+                std::cin >> buffer[i][j][l];
         }
+        matrixArr[i] = Matrix(size, buffer[i]);
     }
-    // Пытался через массив матриц, но выдавало сигсег, так что лучше так
-    Matrix a = Matrix(size, buffer[0]);
-    a[1][1] = 5;
-    for (int i = 0; i < size; ++i) {
-        printf("%d ", a[1][i]);
-    }
+
+    Matrix km(size, k);
+
+    std::cout << (matrixArr[A] + matrixArr[B] * ~matrixArr[C] + km) * ~matrixArr[D];
 }
