@@ -1,10 +1,19 @@
 #include "Matrix.h"
 #include "iostream"
 
+MatrixColumn::MatrixColumn(int **pos) : pos(pos) {}
+
+int& MatrixColumn::operator[](int num) {
+    return *(pos[num]);
+}
+MatrixColumn::~MatrixColumn() {
+    delete[] pos;
+}
+
 Matrix::Matrix() {
     size = 0;
     values = nullptr;
-    column = nullptr;
+//    column = nullptr;
 }
 
 Matrix::Matrix(int size) : Matrix(size, 1) {}
@@ -17,7 +26,7 @@ Matrix::Matrix(int size, int value) : size(size) {
             values[i][j] = 0;
         values[i][i] = value;
     }
-    column = nullptr;
+//    column = nullptr;
 }
 // Мне не нравится эти одинаковые конструкторы, но что поделать
 // Пытался в верхнем вызвать нижний конструктор, но это не сработало так как мне надо
@@ -29,12 +38,12 @@ Matrix::Matrix(int size, int* value) : size(size) {
             values[i][j] = 0;
         values[i][i] = value[i];
     }
-    column = nullptr;
+//    column = nullptr;
 }
 
 Matrix::Matrix(int size, int** value) : size(size) {
     values = value;
-    column = nullptr;
+//    column = nullptr;
 }
 
 // Получение минора
@@ -114,12 +123,13 @@ int* Matrix::operator[](int num) {
 }
 
 // Взятие столбца
-int* Matrix::operator()(int num) {
-    column = new int[size];
+MatrixColumn Matrix::operator()(int num) {
+    int **start = new int*[size];
     for (int i = 0; i < size; ++i) {
-        column[i] = values[i][num - 1];
+        start[i] = &values[i][num];
     }
-    return column;
+    MatrixColumn a(start);
+    return a;
 }
 
 // Транспонирование матрицы
@@ -137,5 +147,6 @@ Matrix::~Matrix() {
     for (int i = 0; i < size; ++i)
         delete[] values[i];
     delete[] values;
-    delete[] column;
+//    delete column;
 }
+
