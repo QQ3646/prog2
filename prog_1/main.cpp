@@ -1,11 +1,18 @@
 #include <iostream>
 #include "Matrix.h"
+#include "cstdio"
 
 enum namesOfMatrix {
     A, B, C, D,
 };
 
 int main() {
+    int outputMode;
+    scanf("%d", &outputMode);
+    if (outputMode == 1) {
+        freopen("input.txt", "r", stdin);
+        freopen("output.txt", "w", stdout);
+    }
     int size;
     scanf("%d", &size);
     int k;

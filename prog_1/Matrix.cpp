@@ -13,7 +13,6 @@ MatrixColumn::~MatrixColumn() {
 Matrix::Matrix() {
     size = 0;
     values = nullptr;
-//    column = nullptr;
 }
 
 Matrix::Matrix(int size) : Matrix(size, 1) {}
@@ -26,7 +25,6 @@ Matrix::Matrix(int size, int value) : size(size) {
             values[i][j] = 0;
         values[i][i] = value;
     }
-//    column = nullptr;
 }
 // Мне не нравится эти одинаковые конструкторы, но что поделать
 // Пытался в верхнем вызвать нижний конструктор, но это не сработало так как мне надо
@@ -38,12 +36,10 @@ Matrix::Matrix(int size, int* value) : size(size) {
             values[i][j] = 0;
         values[i][i] = value[i];
     }
-//    column = nullptr;
 }
 
 Matrix::Matrix(int size, int** value) : size(size) {
     values = value;
-//    column = nullptr;
 }
 
 // Получение минора
@@ -101,7 +97,7 @@ void Matrix::operator+() {
     }
 }
 
-// Умножение матриц
+// Умножение матриц *надо допилить еще умножение на столбец, пожалуй
 Matrix Matrix::operator*(const Matrix &b) const {
     int** newValues = new int*[size];
     for (int i = 0; i < size; i++) {
@@ -147,6 +143,5 @@ Matrix::~Matrix() {
     for (int i = 0; i < size; ++i)
         delete[] values[i];
     delete[] values;
-//    delete column;
 }
 
