@@ -2,47 +2,46 @@
 #include "Matrix.h"
 #include "cstdio"
 
-enum namesOfMatrix {
+std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
+    for (int i = 0; i < matrix.size; ++i) {
+        for (int j = 0; j < matrix.size; ++j)
+            ostream << matrix.values[i][j] << " ";
+        ostream << std::endl;
+    }
+    return ostream;
+}
+
+enum MatrixNames {
     A, B, C, D,
 };
 
 int main() {
+    const int MATRIX_COUNT = 4;
+
     int outputMode;
-    scanf("%d", &outputMode);
+    std::cin >> outputMode;
+
     if (outputMode == 1) {
-        freopen("input.txt", "r", stdin);
-        freopen("output.txt", "w", stdout);
+        std::freopen("input.txt", "r", stdin);
+        std::freopen("output.txt", "w", stdout);
     }
-    int size;
-    scanf("%d", &size);
-    int k;
-    scanf("%d", &k);
-    int*** buffer = new int**[4];
-    for (int i = 0; i < 1; ++i) {
-        buffer[i] = new int*[size];
-        for (int j = 0; j < size; ++j)
-            buffer[i][j] = new int[size];
-    }
-    for (int i = 0; i < 1; ++i) {
+
+    int size, k;
+    std::cin >> size >> k;
+
+    int ***buffer = new int **[MATRIX_COUNT];
+    Matrix *matrixArr = new Matrix[MATRIX_COUNT];
+    for (int i = 0; i < MATRIX_COUNT; ++i) {
+        buffer[i] = new int *[size];
         for (int j = 0; j < size; ++j) {
-            for (int l = 0; l < size; ++l) {
-                scanf("%d", &buffer[i][j][l]);
-            }
+            buffer[i][j] = new int[size];
+            for (int l = 0; l < size; ++l)
+                std::cin >> buffer[i][j][l];
         }
+        matrixArr[i] = Matrix(size, buffer[i]);
     }
-    // Пытался через массив матриц, но выдавало сигсег, так что лучше так
-    Matrix a = Matrix(size, buffer[0]);
-    Matrix b = Matrix(size, buffer[1]);
-    Matrix c = Matrix(size, buffer[2]);
-    Matrix d = Matrix(size, buffer[3]);
-    Matrix km = Matrix(size, k);
-    +((a + b * ~c + km) * ~d);
-//TEST
-//    a[1][1] = 5;
-//    a(1)[1] = -1;
-//    for (int i = 0; i < size; ++i) {
-//        for (int j = 0; j < size; ++j)
-//            printf("%d ", a[i][j]);
-//        printf("\n");
-//    }
+
+    Matrix km(size, k);
+
+    std::cout << (matrixArr[A] + matrixArr[B] * ~matrixArr[C] + km) * ~matrixArr[D];
 }
