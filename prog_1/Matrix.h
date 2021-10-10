@@ -45,6 +45,8 @@ public:
 
     Matrix(int size, std::istream &istream);
 
+    Matrix(const Matrix &matrix);
+
     Matrix& operator=(const Matrix &matrix);
 
     Matrix operator()(int a, int b);

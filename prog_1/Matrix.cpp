@@ -68,6 +68,8 @@ Matrix::Matrix(int size, std::istream &istream) : Matrix(size, 0) {
             istream >> values[i][j];
 }
 
+
+
 Matrix &Matrix::operator=(const Matrix &matrix) {
     if (this == &matrix)
         return *this;
@@ -100,23 +102,23 @@ Matrix Matrix::operator()(int a, int b) {
     if (a >= size or b >= size)
         throw "Invalid x or y";
 
-    Matrix *newM = new Matrix(size - 1, 0);
-    newM->values = new int*[size - 1];
+    Matrix newM(size - 1, 0);
+    newM.values = new int*[size - 1];
 
     int ni = 0, nj = 0;
     for (int i = 0; i < size; ++i) {
         if (i == a - 1)
             continue;
-        newM->values[ni] = new int[size - 1];
+        newM.values[ni] = new int[size - 1];
         for (int j = 0; j < size; ++j) {
             if (j == b - 1)
                 continue;
-            newM->values[ni][nj++] = values[i][j];
+            newM.values[ni][nj++] = values[i][j];
         }
         ni++;
         nj = 0;
     }
-    return *newM;
+    return newM;
 }
 
 // Сравнение матриц
@@ -135,34 +137,34 @@ Matrix Matrix::operator+(const Matrix &a) const {
     if (size != a.size)
         throw "Size of the matrices does not match!";
 
-    Matrix *newM = new Matrix(size, 0);
-    newM->values = new int *[size];
+    Matrix newM(size, 0);
+    newM.values = new int *[size];
     for (int i = 0; i < size; i++) {
-        newM->values[i] = new int[size];
+        newM.values[i] = new int[size];
         for (int j = 0; j < size; j++)
-            newM->values[i][j] = values[i][j] + a.values[i][j];
+            newM.values[i][j] = values[i][j] + a.values[i][j];
     }
 
-    return *newM;
+    return newM;
 }
 
-// Умножение матриц *надо допилить еще умножение на столбец, пожалуй
+// Умножение матриц
 Matrix Matrix::operator*(const Matrix &b) const {
     if (size != b.size)
         throw "Size of the matrices does not match!";
 
-    Matrix *newM = new Matrix(size, 0);
-    newM->values = new int *[size];
+    Matrix newM(size, 0);
+    newM.values = new int *[size];
     for (int i = 0; i < size; i++) {
-        newM->values[i] = new int[size];
+        newM.values[i] = new int[size];
         for (int j = 0; j < size; j++) {
             int tempSum = 0;
             for (int k = 0; k < size; ++k)
                 tempSum += values[i][k] * b.values[k][j];
-            newM->values[i][j] = tempSum;
+            newM.values[i][j] = tempSum;
         }
     }
-    return *newM;
+    return newM;
 }
 
 // Взятие строки
@@ -173,14 +175,14 @@ MatrixPart Matrix::operator()(int num) { return {num, *this, true}; }
 
 // Транспонирование матрицы
 Matrix Matrix::operator~() {
-    Matrix *newM = new Matrix(size, 0);
-    newM->values = new int *[size];
+    Matrix newM(size, 0);
+    newM.values = new int *[size];
     for (int i = 0; i < size; ++i) {
-        newM->values[i] = new int[size];
+        newM.values[i] = new int[size];
         for (int j = 0; j < size; ++j)
-            newM->values[i][j] = values[j][i];
+            newM.values[i][j] = values[j][i];
     }
-    return *newM;
+    return newM;
 }
 
 std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
