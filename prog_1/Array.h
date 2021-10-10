@@ -17,6 +17,8 @@ class List {
 public:
     List();
 
+//    List(const List &list);
+
     void push_back(MatrixPart *mp_adress);
 
     void find_and_delete(MatrixPart *mp_adress);

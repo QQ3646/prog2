@@ -11,6 +11,10 @@ List::List() {
     end = nullptr;
 }
 
+//List::List(const List &list) {
+//
+//}
+
 void List::push_back(MatrixPart *mp_adress) {
     Node *newN = new Node(mp_adress);
     if (head == nullptr && end == nullptr) {

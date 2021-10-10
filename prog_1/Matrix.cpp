@@ -76,7 +76,8 @@ Matrix &Matrix::operator=(const Matrix &matrix) {
         return *this;
 
     usedPart->make_inaccessible();
-    usedPart = matrix.usedPart;
+    delete usedPart;
+    usedPart = new List();
 
     if (size != matrix.size) {
         int **newValues = new int *[matrix.size];
