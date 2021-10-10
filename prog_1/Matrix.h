@@ -3,6 +3,7 @@
 #include "Array.h"
 
 class Matrix;
+class List;
 
 class MatrixPart {
     int num;

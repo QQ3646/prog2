@@ -6,10 +6,6 @@ Node::Node(MatrixPart *mp_adress) {
     this->mp_adress = mp_adress;
 }
 
-MatrixPart *Node::get_adress() {
-    return this->mp_adress;
-}
-
 List::List() {
     head = nullptr;
     end = nullptr;
@@ -33,7 +29,7 @@ void List::find_and_delete(MatrixPart *mp_adress) {
     } else {
         Node *previousNode = nullptr;
         Node *currentNode = head;
-        while (currentNode->mp_adress != mp_adress and currentNode != nullptr) {
+        while (currentNode != nullptr and currentNode->mp_adress != mp_adress) {
             previousNode = currentNode;
             currentNode = currentNode->next;
         }

@@ -23,7 +23,8 @@ void MatrixPart::makeInaccessible() {
 }
 
 MatrixPart::~MatrixPart() {
-    matrix.usedPart->find_and_delete(this);
+    if (matrixExist)
+        matrix.usedPart->find_and_delete(this);
 }
 
 void Matrix::allocateMem() {

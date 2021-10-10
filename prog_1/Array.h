@@ -1,6 +1,8 @@
 #pragma once
 #include "Matrix.h"
 
+class MatrixPart;
+
 class Node {
     Node *next;
     MatrixPart *mp_adress;
@@ -8,8 +10,6 @@ class Node {
     friend class List;
 public:
     Node(MatrixPart *mp_adress);
-
-    MatrixPart *get_adress();
 };
 
 class List {

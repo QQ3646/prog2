@@ -1,25 +1,37 @@
 #include <iostream>
+#include "Array.h"
 #include "cstdio"
 
+#pragma once
 #include "iostream"
+#include "Array.h"
 
 class Matrix;
+class List;
 
 class MatrixPart {
     int num;
     const Matrix &matrix;
     bool flag;  // 0 - line
                 // 1 - column
+    bool matrixExist;
+    friend class Matrix;
+    friend class List;
+
+    void makeInaccessible();
 public:
-    MatrixPart(int num, const Matrix &matrix, bool flag);
+    MatrixPart(int num, Matrix &matrix, bool flag);
 
     int& operator[](int num);
+
+    ~MatrixPart();
 };
 
 
 class Matrix {
     int size;
     int **values;
+    List *usedPart;
 
     friend std::ostream& operator<<(std::ostream &ostream, const Matrix &matrix);  // Пригодилось!
     friend MatrixPart;
@@ -27,19 +39,31 @@ class Matrix {
     void allocateMem();
 
     void deleteMem();
-
-   MatrixPart::MatrixPart(int num, const Matrix &matrix, bool flag) : num(num), matrix(matrix), flag(flag) {
-       if (num >= matrix.size)
+public:
+   MatrixPart::MatrixPart(int num, Matrix &matrix, bool flag) : num(num), matrix(matrix), flag(flag), matrixExist(true) {
+       if (num >= matrix.size)  // Вынес сюда проверку на недействительный номер чтобы не писать дважды
            throw "Invalid number!";
+       matrix.usedPart->push_back(this);
    }
    
    int &MatrixPart::operator[](int n) {
+       if (!matrixExist)
+           throw "Matrix doesn't exist!";
        if (n >= matrix.size)
            throw "Invalid number!";
        if (flag)
            return matrix.values[n][num];
        else
            return matrix.values[num][n];
+   }
+   
+   void MatrixPart::makeInaccessible() {
+       matrixExist = false;
+   }
+   
+   MatrixPart::~MatrixPart() {
+       if (matrixExist)
+           matrix.usedPart->find_and_delete(this);
    }
    
    void allocateMem() {
@@ -58,13 +82,16 @@ class Matrix {
    }
    
    Matrix() {
+       usedPart = new List();
        size = 0;
        values = nullptr;
    }
    
    Matrix(int size) : Matrix(size, 1) {}
    
+   // Вынес все аллокации памяти в один конструктор, не знаю, надо было ли, но мне так нравится чуть больше
    Matrix(int size, int value) : size(size) {
+       usedPart = new List();
        allocateMem();
        for (int i = 0; i < size; ++i)
            values[i][i] = value;
@@ -75,31 +102,38 @@ class Matrix {
            this->values[i][i] = values[i];
    }
    
-   Matrix(int size, int **values) : size(size) {
-       this->values = values;
-   }
-   
    Matrix(int size, std::istream &istream) : Matrix(size, 0) {
        for (int i = 0; i < size; ++i)
            for (int j = 0; j < size; ++j)
                istream >> values[i][j];
    }
    
+   
+   
    Matrix &operator=(const Matrix &matrix) {
        if (this == &matrix)
            return *this;
    
-       int **newValues = new int *[matrix.size];
-       for (int i = 0; i < matrix.size; ++i) {
-           newValues[i] = new int[matrix.size];
-           for (int j = 0; j < matrix.size; ++j)
-               newValues[i][j] = matrix.values[i][j];
+       usedPart->make_inaccessible();
+       usedPart = matrix.usedPart;
+   
+       if (size != matrix.size) {
+           int **newValues = new int *[matrix.size];
+           for (int i = 0; i < matrix.size; ++i) {
+               newValues[i] = new int[matrix.size];
+               for (int j = 0; j < matrix.size; ++j)
+                   newValues[i][j] = matrix.values[i][j];
+           }
+   
+           deleteMem();
+   
+           size = matrix.size;
+           values = newValues;
+       } else {
+           for (int i = 0; i < matrix.size; ++i)
+               for (int j = 0; j < matrix.size; ++j)
+                   values[i][j] = matrix.values[i][j];
        }
-   
-       deleteMem();
-   
-       size = matrix.size;
-       values = newValues;
        return *this;
    }
    
@@ -108,23 +142,23 @@ class Matrix {
        if (a >= size or b >= size)
            throw "Invalid x or y";
    
-       Matrix *newM = new Matrix(size - 1, 0);
+       Matrix newM(size - 1, 0);
+       newM.values = new int*[size - 1];
    
-       newM->values = new int *[size - 1];
        int ni = 0, nj = 0;
        for (int i = 0; i < size; ++i) {
            if (i == a - 1)
                continue;
-           newM->values[ni] = new int[size - 1];
+           newM.values[ni] = new int[size - 1];
            for (int j = 0; j < size; ++j) {
                if (j == b - 1)
                    continue;
-               newM->values[ni][nj++] = values[i][j];
+               newM.values[ni][nj++] = values[i][j];
            }
            ni++;
            nj = 0;
        }
-       return *newM;
+       return newM;
    }
    
    // Сравнение матриц
@@ -143,34 +177,34 @@ class Matrix {
        if (size != a.size)
            throw "Size of the matrices does not match!";
    
-       Matrix *newM = new Matrix(size, 0);
-       newM->values = new int *[size];
+       Matrix newM(size, 0);
+       newM.values = new int *[size];
        for (int i = 0; i < size; i++) {
-           newM->values[i] = new int[size];
+           newM.values[i] = new int[size];
            for (int j = 0; j < size; j++)
-               newM->values[i][j] = values[i][j] + a.values[i][j];
+               newM.values[i][j] = values[i][j] + a.values[i][j];
        }
    
-       return *newM;
+       return newM;
    }
    
-   // Умножение матриц *надо допилить еще умножение на столбец, пожалуй
+   // Умножение матриц
    Matrix operator*(const Matrix &b) const {
        if (size != b.size)
            throw "Size of the matrices does not match!";
    
-       Matrix *newM = new Matrix(size, 0);
-       newM->values = new int *[size];
+       Matrix newM(size, 0);
+       newM.values = new int *[size];
        for (int i = 0; i < size; i++) {
-           newM->values[i] = new int[size];
+           newM.values[i] = new int[size];
            for (int j = 0; j < size; j++) {
                int tempSum = 0;
                for (int k = 0; k < size; ++k)
                    tempSum += values[i][k] * b.values[k][j];
-               newM->values[i][j] = tempSum;
+               newM.values[i][j] = tempSum;
            }
        }
-       return *newM;
+       return newM;
    }
    
    // Взятие строки
@@ -181,14 +215,14 @@ class Matrix {
    
    // Транспонирование матрицы
    Matrix operator~() {
-       Matrix *newM = new Matrix(size, 0);
-       newM->values = new int *[size];
+       Matrix newM(size, 0);
+       newM.values = new int *[size];
        for (int i = 0; i < size; ++i) {
-           newM->values[i] = new int[size];
+           newM.values[i] = new int[size];
            for (int j = 0; j < size; ++j)
-               newM->values[i][j] = values[j][i];
+               newM.values[i][j] = values[j][i];
        }
-       return *newM;
+       return newM;
    }
    
    std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
@@ -201,10 +235,9 @@ class Matrix {
    }
    
    ~Matrix() {
+       usedPart->make_inaccessible();
        deleteMem();
-   }
-   
-};
+   }};
 
 
 
@@ -233,12 +266,15 @@ int main() {
 //    }
 //
 //    std::cout << (matrixArr[A] + matrixArr[B] * ~matrixArr[C] + km) * ~matrixArr[D];
-
-    Matrix a(size, std::cin);
-    std::cout << a;
-    a[1][1] = 1000;
+//    delete[] matrixArr;
+    Matrix *a = new Matrix(size, std::cin);
+    std::cout << *a;
+    MatrixPart b = (*a)(1);
 //    std::cout << a;
-    a(2)[1] = -1000;
-    std::cout << a;
-    std::cout << a(1, 1);
+    MatrixPart c = (*a)[1];
+    delete a;
+//    a(2)[1] = -1000;
+//    std::cout << a;
+//    std::cout << a(1, 1);
+
 }
