@@ -1,9 +1,5 @@
 #include "SubClasses.h"
-#include <typeinfo>
 
-enum typeList {
-    number, var, add, sub,
-};
 
 Number::Number(int value) {
     this->value = value;
@@ -25,7 +21,21 @@ int Number::eval(const String &a) { return value; }
 
 int Number::get_value() const { return value; }
 
-Expression *Number::simplify() { return this; }
+Expression *Number::simple() { return this->get_copy(); }
+
+bool Number::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    Number tempe2 = dynamic_cast<const Number &>(e2);
+    if (tempe2.value == this->value)
+        return true;
+    return false;
+}
+
+bool Number::findX() {
+    return false;
+}
+
 
 
 Variable::Variable(const String &string) {
@@ -58,7 +68,7 @@ int Variable::eval(const String &string) {
         if (skip) continue;
         if (isalnum(string[i])) {
             int j = i;
-            for(; string[j] != ' '; j++);
+            for (; string[j] != ' '; j++);
             if (string(i, j) == name)
                 return 1;
             else
@@ -68,9 +78,23 @@ int Variable::eval(const String &string) {
     return 0;
 }
 
-Expression *Variable::simplify() { return nullptr; }
+Expression *Variable::simple() { return this->get_copy(); }
 
 const String &Variable::get_name() { return name; }
+
+bool Variable::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    const Variable *tempe2 = dynamic_cast<const Variable *>(&e2);
+    if ((String)tempe2->name == this->name)
+        return true;
+    return false;
+}
+
+bool Variable::findX() {
+    return true;
+}
+
 
 
 Add::Add(Expression *first, Expression *second) : Operations(first, second, '+') {}
@@ -85,7 +109,39 @@ Expression *Add::derivative(const String &string) {
 
 int Add::eval(const String &string) { return first->eval(string) + second->eval(string); }
 
-Expression *Add::simplify() { return nullptr; }
+Expression *Add::simple() {
+    Expression *s_e1 = this->first->simple();
+    Expression *s_e2 = this->second->simple();
+//    if (!Operations::findX()) {
+//        int eval_res1 = s_e1->eval("");
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e1;
+//        delete s_e2;
+//
+//        return new Number(eval_res1 + eval_res2);
+//    }
+    Add *temp = new Add(s_e1, s_e2);
+    if (!temp->findX()) {
+        int eval_res = temp->eval("");
+
+        delete temp;
+
+        return new Number(eval_res);
+    }
+    return temp;
+}
+
+bool Add::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    const Add *tempe2 = dynamic_cast<const Add *>(&e2);
+    if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
+        (*tempe2->first == *this->second and *tempe2->second == *this->first))
+        return true;
+    return false;
+}
+
 
 
 Sub::Sub(Expression *first, Expression *second) : Operations(first, second, '-') {}
@@ -100,7 +156,44 @@ Expression *Sub::derivative(const String &string) {
 
 int Sub::eval(const String &string) { return first->eval(string) - second->eval(string); }
 
-Expression *Sub::simplify() { return nullptr; }
+Expression *Sub::simple() {
+    Expression *s_e1 = this->first->simple();
+    Expression *s_e2 = this->second->simple();
+    if (*s_e1 == *s_e2) {
+        delete s_e1;
+        delete s_e2;
+
+        return new Number(0);
+    }
+//    if (!Operations::findX()) {
+//        int eval_res1 = s_e1->eval("");
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e1;
+//        delete s_e2;
+//
+//        return new Number(eval_res1 - eval_res2);
+//    }
+    Sub *temp = new Sub(s_e1, s_e2);
+    if (!temp->findX()) {
+        int eval_res = temp->eval("");
+
+        delete temp;
+
+        return new Number(eval_res);
+    }
+    return temp;
+}
+
+bool Sub::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    const Sub *tempe2 = dynamic_cast<const Sub *>(&e2);
+    if (*tempe2->first == *this->first and *tempe2->second == *this->second)
+        return true;
+    return false;
+}
+
 
 
 Mul::Mul(Expression *first, Expression *second) : Operations(first, second, '*') {}
@@ -116,15 +209,65 @@ Expression *Mul::derivative(const String &string) {
 
 int Mul::eval(const String &string) { return first->eval(string) * second->eval(string); }
 
-Expression *Mul::simplify() {
-    first->simplify();
-    second->simplify();
-    if (typeid(first) == typeid(Number)) {
-        Number &cpy = dynamic_cast<Number &>(*first);
-
-    }
-    return nullptr;
+bool Mul::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    const Mul *tempe2 = dynamic_cast<const Mul *>(&e2);
+    if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
+        (*tempe2->first == *this->second and *tempe2->second == *this->first))
+        return true;
+    return false;
 }
+
+Expression *Mul::simple() {
+    Expression *s_e1 = this->first->simple();
+    Expression *s_e2 = this->second->simple();
+    if (typeid(*s_e1) == typeid(Number)) {
+        Number temp = dynamic_cast<Number &>(*s_e1);
+        if (temp.get_value() == 0) {
+            delete s_e1;
+            delete s_e2;
+
+            return new Number(0);
+        } else if (temp.get_value() == 1) {
+            delete s_e1;
+
+            if (!s_e2->findX()) {
+                int eval_res2 = s_e2->eval("");
+
+                delete s_e2;
+
+                return new Number(eval_res2);
+            }
+
+            return s_e2;
+        }
+    } else if (typeid(*s_e2) == typeid(Number)) {
+        Number temp = dynamic_cast<Number &>(*s_e2);
+        if (temp.get_value() == 0) {
+            delete s_e1;
+            delete s_e2;
+
+            return new Number(0);
+        } else if (temp.get_value() == 1) {
+            delete s_e2;
+            if (!s_e1->findX()) {
+                int eval_res2 = s_e1->eval("");
+                delete s_e1;
+                return new Number(eval_res2);
+            }
+            return s_e1;
+        }
+    }
+    Mul *temp = new Mul(s_e1, s_e2);
+    if (!temp->findX()) {
+        int eval_res = temp->eval("");
+        delete temp;
+        return new Number(eval_res);
+    }
+    return temp;
+}
+
 
 
 Div::Div(Expression *first, Expression *second) : Operations(first, second, '/') {}
@@ -141,22 +284,50 @@ Expression *Div::derivative(const String &string) {
 
 int Div::eval(const String &string) { return first->eval(string) / second->eval(string); }
 
-Expression *Div::simplify() {
-    if (typeid(first) == typeid(second)) {
-        if (typeid(first) == typeid(Number)) {
-            if (dynamic_cast<Number &>(*first).get_value() == dynamic_cast<Number &>(*second).get_value())
-                return new Number(1);
-        } else if (typeid(first) == typeid(Variable)) {
-            const String cpy1 = dynamic_cast<Variable &>(*first).get_name();
-            const String cpy2 = dynamic_cast<Variable &>(*second).get_name();
-            int i = 0;
-            for (; cpy1[i] != '\0' and cpy2[i] != '\0'; ++i) {
-                if (cpy1[i] != cpy2[i])
-                    return this;
-            }
-            if (cpy2[i] == '\0' and cpy1[i] == '\0')
-                return new Number(1);
-        }
+bool Div::operator==(const Expression &e2) {
+    if (typeid(*this) != typeid(e2))
+        return false;
+    Div tempe2 = dynamic_cast<const Div &>(e2);
+    if (*tempe2.first == *this->first and *tempe2.second == *this->second)
+        return true;
+    return false;
+}
+
+Expression *Div::simple() {
+    Expression *s_e1 = this->first->simple();
+    Expression *s_e2 = this->second->simple();
+    if (*s_e1 == *s_e2) {
+        delete s_e1;
+        delete s_e2;
+
+        return new Number(1);
     }
-    return this;
+//    if (!s_e1->findX() && !s_e2->findX()) {
+//        int eval_res1 = s_e1->eval("");
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e1;
+//        delete s_e2;
+//
+//        return new Number(eval_res1 / eval_res2);
+//    } else if (!s_e1->findX()) {
+//        int eval_res1 = s_e1->eval("");
+//
+//        delete s_e1;
+//
+//        return new Div(new Number(eval_res1), s_e2);
+//    } else if (!s_e2->findX()) {
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e2;
+//
+//        return new Div(s_e1, new Number(eval_res2));
+//    }
+    Div *temp =  new Div(s_e1, s_e2);
+    if (!temp->findX()) {
+        int eval_res = temp->eval("");
+        delete temp;
+        return new Number(eval_res);
+    }
+    return temp;
 }

@@ -62,11 +62,11 @@ int main() {
     in.open("input.txt");
 
     Expression *c = parse(in);
-    Expression *e = c->derivative("x");
-    e->print(out);
-
+//    Expression *e = c->derivative("x");
+//    e->print(out);
+    c->simple()->print(out);
     delete c;
-    delete e;
+//    delete e;
     out.close();
     in.close();
 }

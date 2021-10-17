@@ -40,7 +40,7 @@ std::ifstream &operator>>(std::ifstream &istream, String &string) {
 
     char temp = (char) istream.get();
     int current_index = 0;
-    while (temp != -1) {
+    while (temp != EOF) {
         if (current_index + 1 >= string.ALLOCATED_SIZE) {
             char *tempstr = new char[string.size + 1];
             int i = 0;

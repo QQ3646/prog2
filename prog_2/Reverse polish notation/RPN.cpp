@@ -42,6 +42,8 @@ String RPN::pop_stack() {
 }
 
 char RPN::get_last_op() {
+    if (endOperation == nullptr)
+        return '\0';
     return endOperation->value[0];
 }
 

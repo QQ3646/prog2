@@ -13,15 +13,18 @@ public:
 
     void print(std::ofstream &stream);
 
-
     int eval(const String &a);
 
     int get_value() const;
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
+
+    bool findX();
 };
 
-class Variable : public Expression{
+class Variable : public Expression {
     String name;
 public:
     Variable(const String &string);
@@ -36,7 +39,11 @@ public:
 
     int eval(const String &a);
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
+
+    bool findX();
 };
 
 class Add : public Operations {
@@ -49,7 +56,9 @@ public:
 
     int eval(const String &a);
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
 };
 
 class Sub : public Operations {
@@ -62,7 +71,9 @@ public:
 
     int eval(const String &a);
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
 };
 
 class Mul : public Operations {
@@ -75,7 +86,9 @@ public:
 
     int eval(const String &a);
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
 };
 
 class Div : public Operations {
@@ -88,5 +101,7 @@ public:
 
     int eval(const String &a);
 
-    Expression *simplify();
+    Expression *simple();
+
+    bool operator==(const Expression &e2);
 };

@@ -10,7 +10,11 @@ public:
 
     virtual int eval(const String &string) = 0;
 
-    virtual Expression *simplify() = 0;
+    virtual Expression *simple() = 0;
+
+    virtual bool operator==(const Expression &e2) = 0;
+
+    virtual bool findX() = 0;
 
     virtual ~Expression() {}
 };
@@ -27,15 +31,17 @@ protected:
         this->symbol = symbol;
     }
 
-    virtual int eval(const String &string) = 0; // Чтобы сделать метод абстрактным (да, костыль)
-
     void print(std::ofstream &stream) {
         stream << '(';
         first->print(stream);
         stream << symbol;
         second->print(stream);
         stream << ')';
-    };
+    }
+
+    bool findX() {
+        return first->findX() || second->findX();
+    }
 
     ~Operations() {
         delete first;

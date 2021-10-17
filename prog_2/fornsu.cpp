@@ -51,7 +51,7 @@ public:
 
         char temp = (char) istream.get();
         int current_index = 0;
-        while (temp != -1) {
+        while (temp != EOF) {
             if (current_index + 1 >= string.ALLOCATED_SIZE) {
                 char *tempstr = new char[string.size + 1];
                 int i = 0;
@@ -172,7 +172,7 @@ public:
 
     virtual int eval(const String &string) = 0;
 
-    virtual Expression *simplify() = 0;
+    virtual Expression *simple() = 0;
 
     virtual ~Expression() {}
 };
@@ -227,7 +227,7 @@ public:
 
     int get_value() const { return value; }
 
-    Expression *simplify() { return this; }
+    Expression *simple() { return this; }
 };
 
 class Variable : public Expression {
@@ -255,7 +255,7 @@ public:
 
     int eval(const String &string) { return 0; }
 
-    Expression *simplify() { return nullptr; }
+    Expression *simple() { return nullptr; }
 
     const String &get_name() { return name; }
 };
@@ -274,7 +274,7 @@ public:
 
     int eval(const String &string) { return first->eval(string) + second->eval(string); }
 
-    Expression *simplify() { return nullptr; }
+    Expression *simple() { return nullptr; }
 };
 
 class Sub : public Operations {
@@ -291,7 +291,7 @@ public:
 
     int eval(const String &string) { return first->eval(string) - second->eval(string); }
 
-    Expression *simplify() { return nullptr; }
+    Expression *simple() { return nullptr; }
 };
 
 class Mul : public Operations {
@@ -309,7 +309,7 @@ public:
 
     int eval(const String &string) { return first->eval(string) * second->eval(string); }
 
-    Expression *simplify() {
+    Expression *simple() {
         return nullptr;
     }
 };
@@ -329,7 +329,7 @@ public:
 
     int eval(const String &string) { return first->eval(string) / second->eval(string); }
 
-    Expression *simplify() {
+    Expression *simple() {
         return nullptr;
     }
 };

@@ -1,6 +1,7 @@
 #include "iostream"
 #include <fstream>
 #include "ctype.h"
+#include <typeinfo>
 
 class String {
     char *string;
