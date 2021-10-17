@@ -112,15 +112,6 @@ int Add::eval(const String &string) { return first->eval(string) + second->eval(
 Expression *Add::simple() {
     Expression *s_e1 = this->first->simple();
     Expression *s_e2 = this->second->simple();
-//    if (!Operations::findX()) {
-//        int eval_res1 = s_e1->eval("");
-//        int eval_res2 = s_e2->eval("");
-//
-//        delete s_e1;
-//        delete s_e2;
-//
-//        return new Number(eval_res1 + eval_res2);
-//    }
     Add *temp = new Add(s_e1, s_e2);
     if (!temp->findX()) {
         int eval_res = temp->eval("");
@@ -165,15 +156,6 @@ Expression *Sub::simple() {
 
         return new Number(0);
     }
-//    if (!Operations::findX()) {
-//        int eval_res1 = s_e1->eval("");
-//        int eval_res2 = s_e2->eval("");
-//
-//        delete s_e1;
-//        delete s_e2;
-//
-//        return new Number(eval_res1 - eval_res2);
-//    }
     Sub *temp = new Sub(s_e1, s_e2);
     if (!temp->findX()) {
         int eval_res = temp->eval("");
@@ -223,13 +205,13 @@ Expression *Mul::simple() {
     Expression *s_e1 = this->first->simple();
     Expression *s_e2 = this->second->simple();
     if (typeid(*s_e1) == typeid(Number)) {
-        Number temp = dynamic_cast<Number &>(*s_e1);
-        if (temp.get_value() == 0) {
+        Number *temp = dynamic_cast<Number *>(s_e1);
+        if (temp->get_value() == 0) {
             delete s_e1;
             delete s_e2;
 
             return new Number(0);
-        } else if (temp.get_value() == 1) {
+        } else if (temp->get_value() == 1) {
             delete s_e1;
 
             if (!s_e2->findX()) {
@@ -243,13 +225,13 @@ Expression *Mul::simple() {
             return s_e2;
         }
     } else if (typeid(*s_e2) == typeid(Number)) {
-        Number temp = dynamic_cast<Number &>(*s_e2);
-        if (temp.get_value() == 0) {
+        Number *temp = dynamic_cast<Number *>(s_e2);
+        if (temp->get_value() == 0) {
             delete s_e1;
             delete s_e2;
 
             return new Number(0);
-        } else if (temp.get_value() == 1) {
+        } else if (temp->get_value() == 1) {
             delete s_e2;
             if (!s_e1->findX()) {
                 int eval_res2 = s_e1->eval("");
