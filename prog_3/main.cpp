@@ -1,6 +1,8 @@
 #include <iostream>
 #include "HashMap.h"
 
+
+
 template<typename K, typename V>
 void map() {
     HashMap<K, V> map;
@@ -36,9 +38,23 @@ void map() {
 
 }
 
+//template<typename K>
+//void check2(char value) {
+//    if (value == 'I') map<K, int>();
+//    else if (value == 'S') map<K, std::string>;
+//    else if (value == 'D') map<K, double>();
+//}
+//
+//void checkk(char key, char value) {
+//    if (key == 'I') check2<int>(value);
+//    else if (key == 'D') check2<double>(value);
+//    else if (key == 'S') check2<std::string>(value);
+//}
+
 int main() {
     char key_type, value_type;
     std::cin >> key_type >> value_type;
+//    checkk(key_type, value_type);
     if (key_type == 'I' && value_type == 'I') map<int, int>();
     else if (key_type == 'I' && value_type == 'D') map<int, double>();
     else if (key_type == 'I' && value_type == 'S') map<int, std::string>();

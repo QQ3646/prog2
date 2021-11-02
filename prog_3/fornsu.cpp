@@ -126,7 +126,8 @@ public:
         size_t start_ind = getHash(key);
         size_t current_ind = start_ind;
         bool loop = false;
-        while (true) {
+        int i = start_ind;
+        while (i++ < allocated_mem*2) {
             if (current_ind == allocated_mem) {
                 current_ind = 0;
                 loop = true;
@@ -144,14 +145,15 @@ public:
         size_t start_ind = getHash(key);
         size_t current_ind = start_ind;
         bool loop = false;
-        while (true) {
+        int i = start_ind;
+        while (i++ < allocated_mem*2) {
             if (current_ind == allocated_mem) {
                 current_ind = 0;
                 loop = true;
             } else if (loop && current_ind == start_ind) {
                 return;
             }
-            if (values[current_ind].get_key() == key) {
+            if (values[current_ind].get_key() == key && !values[current_ind].get_flag()) {
                 values[current_ind].make_deleted();
                 size--;
                 return;
