@@ -1,6 +1,8 @@
-#include "iostream"
+#include <iostream>
 #include "ctype.h"
+#include <typeinfo>
 #include <fstream>
+#include <stdexcept>
 
 class String {
     char *string;
@@ -8,17 +10,14 @@ class String {
 
     int BUFFER_SIZE, ALLOCATED_SIZE;
 
-    friend std::ostream &operator<<(std::ostream &ostream, const String &string);
-
-    friend std::istream &operator>>(std::istream &istream, String &string);
-
+//    friend std::ofstream &operator<<(std::ofstream &ostream, const String &string);
+//    friend std::ifstream &operator>>(std::ifstream &istream, String &string);
+public:
     int get_len_of_NP(const char *string) {
         int i = 0;
         for (; string[i]; ++i);
         return i;
     }
-
-public:
 
     String() : size(0), BUFFER_SIZE(2), ALLOCATED_SIZE(1) {
         string = new char[1];
@@ -40,7 +39,7 @@ public:
 
     String(const String &string) : String(string.string) {}
 
-    friend std::istream &operator>>(std::ifstream &istream, String &string) {
+    friend std::ifstream &operator>>(std::ifstream &istream, String &string) {
         delete[] string.string;
 
         string.string = new char[2];
@@ -116,6 +115,7 @@ public:
         return *this + string.string;
     }
 
+
     bool operator==(const char *string) {
         if (size != get_len_of_NP(string))
             return false;
@@ -128,7 +128,7 @@ public:
 
     bool operator==(const String &string) { return *this == string.string; }
 
-    friend std::ostream &operator<<(std::ostream &ostream, const String &string) {
+    friend std::ofstream &operator<<(std::ofstream &ostream, const String &string) {
         for (int i = 0; i < string.size; ++i)
             ostream.put(string.string[i]);
         return ostream;
@@ -136,13 +136,13 @@ public:
 
     char operator[](int n) const {
         if (n > size)
-            throw "Invalid index of string";
+            throw std::runtime_error("Invalid index of string");
         return string[n];
     }
 
-    String operator()(int a, int b) {
-        if (a >= size || a > b)
-            throw "Incorrect [a; b] indexes";
+    String operator()(int a, int b) const {
+        if (a >= size or a > b)
+            throw std::runtime_error("Incorrect [a; b] indexes");
         int newSize = b - a;
         char *temp = new char[newSize + 1];
         for (int i = a; i < b; ++i) {
@@ -151,7 +151,7 @@ public:
         temp[newSize] = '\0';
         String str(temp);
         delete[] temp;
-        return str;
+        return {str};
     }
 
     ~String() {
@@ -160,19 +160,20 @@ public:
 };
 
 class Expression {
-//    int type;
 public:
-    friend std::istream &operator>>(std::istream &istream, Expression &expression);
+    virtual void print(std::ofstream &stream) = 0;
 
     virtual Expression *get_copy() = 0;
-
-    virtual void print(std::ofstream &stream) = 0;
 
     virtual Expression *derivative(const String &string) = 0;
 
     virtual int eval(const String &string) = 0;
 
     virtual Expression *simple() = 0;
+
+    virtual bool operator==(const Expression &e2) = 0;
+
+    virtual bool containsVariable() = 0;
 
     virtual ~Expression() {}
 };
@@ -195,7 +196,11 @@ protected:
         stream << symbol;
         second->print(stream);
         stream << ')';
-    };
+    }
+
+    bool containsVariable() {
+        return first->containsVariable() || second->containsVariable();
+    }
 
     ~Operations() {
         delete first;
@@ -227,7 +232,20 @@ public:
 
     int get_value() const { return value; }
 
-    Expression *simple() { return this; }
+    Expression *simple() { return this->get_copy(); }
+
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        Number tempe2 = dynamic_cast<const Number &>(e2);
+        if (tempe2.value == this->value)
+            return true;
+        return false;
+    }
+
+    bool containsVariable() {
+        return false;
+    }
 };
 
 class Variable : public Expression {
@@ -246,18 +264,49 @@ public:
     }
 
     Expression *derivative(const String &string) {
-        for (int i = 0; string[i] != '\0' && this->name[i] != '\0'; ++i) {
+        for (int i = 0; string[i] != '\0' and this->name[i] != '\0'; ++i) {
             if (this->name[i] != string[i])
                 return new Number(0);
         }
         return new Number(1);
     }
 
-    int eval(const String &string) { return 0; }
+    int eval(const String &string) {
+        bool skip = false;
+        for (int i = 0; i < string.get_len(); ++i) {
+            if (skip && string[i] == ';') {
+                skip = true;
+                continue;
+            }
+            if (skip) continue;
+            if (isalnum(string[i])) {
+                int j = i;
+                for (; string[j] != ' '; j++);
+                if (string(i, j) == name)
+                    return 1;
+                else
+                    skip = true;
+            }
+        }
+        return 0;
+    }
 
-    Expression *simple() { return nullptr; }
+    Expression *simple() { return this->get_copy(); }
 
     const String &get_name() { return name; }
+
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        const Variable *tempe2 = dynamic_cast<const Variable *>(&e2);
+        if ((String)tempe2->name == this->name)
+            return true;
+        return false;
+    }
+
+    bool containsVariable() {
+        return true;
+    }
 };
 
 class Add : public Operations {
@@ -274,7 +323,29 @@ public:
 
     int eval(const String &string) { return first->eval(string) + second->eval(string); }
 
-    Expression *simple() { return nullptr; }
+    Expression *simple() {
+        Expression *s_e1 = this->first->simple();
+        Expression *s_e2 = this->second->simple();
+        Add *temp = new Add(s_e1, s_e2);
+        if (!temp->containsVariable()) {
+            int eval_res = temp->eval("");
+
+            delete temp;
+
+            return new Number(eval_res);
+        }
+        return temp;
+    }
+
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        const Add *tempe2 = dynamic_cast<const Add *>(&e2);
+        if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
+            (*tempe2->first == *this->second and *tempe2->second == *this->first))
+            return true;
+        return false;
+    }
 };
 
 class Sub : public Operations {
@@ -291,7 +362,35 @@ public:
 
     int eval(const String &string) { return first->eval(string) - second->eval(string); }
 
-    Expression *simple() { return nullptr; }
+    Expression *simple() {
+        Expression *s_e1 = this->first->simple();
+        Expression *s_e2 = this->second->simple();
+        if (*s_e1 == *s_e2) {
+            delete s_e1;
+            delete s_e2;
+
+            return new Number(0);
+        }
+        Sub *temp = new Sub(s_e1, s_e2);
+        if (!temp->containsVariable()) {
+            int eval_res = temp->eval("");
+
+            delete temp;
+
+            return new Number(eval_res);
+        }
+        return temp;
+    }
+
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        const Sub *tempe2 = dynamic_cast<const Sub *>(&e2);
+        if (*tempe2->first == *this->first and *tempe2->second == *this->second)
+            return true;
+        return false;
+    }
+
 };
 
 class Mul : public Operations {
@@ -309,9 +408,65 @@ public:
 
     int eval(const String &string) { return first->eval(string) * second->eval(string); }
 
-    Expression *simple() {
-        return nullptr;
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        const Mul *tempe2 = dynamic_cast<const Mul *>(&e2);
+        if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
+            (*tempe2->first == *this->second and *tempe2->second == *this->first))
+            return true;
+        return false;
     }
+
+    Expression *simple() {
+        Expression *s_e1 = this->first->simple();
+        Expression *s_e2 = this->second->simple();
+        if (typeid(*s_e1) == typeid(Number)) {
+            Number *temp = dynamic_cast<Number *>(s_e1);
+            if (temp->get_value() == 0) {
+                delete s_e1;
+                delete s_e2;
+
+                return new Number(0);
+            } else if (temp->get_value() == 1) {
+                delete s_e1;
+
+                if (!s_e2->containsVariable()) {
+                    int eval_res2 = s_e2->eval("");
+
+                    delete s_e2;
+
+                    return new Number(eval_res2);
+                }
+
+                return s_e2;
+            }
+        } else if (typeid(*s_e2) == typeid(Number)) {
+            Number *temp = dynamic_cast<Number *>(s_e2);
+            if (temp->get_value() == 0) {
+                delete s_e1;
+                delete s_e2;
+
+                return new Number(0);
+            } else if (temp->get_value() == 1) {
+                delete s_e2;
+                if (!s_e1->containsVariable()) {
+                    int eval_res2 = s_e1->eval("");
+                    delete s_e1;
+                    return new Number(eval_res2);
+                }
+                return s_e1;
+            }
+        }
+        Mul *temp = new Mul(s_e1, s_e2);
+        if (!temp->containsVariable()) {
+            int eval_res = temp->eval("");
+            delete temp;
+            return new Number(eval_res);
+        }
+        return temp;
+    }
+
 };
 
 class Div : public Operations {
@@ -323,17 +478,61 @@ public:
     }
 
     Expression *derivative(const String &string) {
-        return new Div(new Sub(new Mul(first->derivative(string), second->get_copy()), new Mul(first->get_copy(), second->derivative(string))),
+        return new Div(new Sub(new Mul(first->derivative(string), second->get_copy()),
+                               new Mul(first->get_copy(), second->derivative(string))),
                        new Mul(second->get_copy(), second->get_copy()));
     }
 
     int eval(const String &string) { return first->eval(string) / second->eval(string); }
 
+    bool operator==(const Expression &e2) {
+        if (typeid(*this) != typeid(e2))
+            return false;
+        Div tempe2 = dynamic_cast<const Div &>(e2);
+        if (*tempe2.first == *this->first and *tempe2.second == *this->second)
+            return true;
+        return false;
+    }
+
     Expression *simple() {
-        return nullptr;
+        Expression *s_e1 = this->first->simple();
+        Expression *s_e2 = this->second->simple();
+        if (*s_e1 == *s_e2) {
+            delete s_e1;
+            delete s_e2;
+
+            return new Number(1);
+        }
+//    if (!s_e1->findX() && !s_e2->containsVariable()) {
+//        int eval_res1 = s_e1->eval("");
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e1;
+//        delete s_e2;
+//
+//        return new Number(eval_res1 / eval_res2);
+//    } else if (!s_e1->containsVariable()) {
+//        int eval_res1 = s_e1->eval("");
+//
+//        delete s_e1;
+//
+//        return new Div(new Number(eval_res1), s_e2);
+//    } else if (!s_e2->containsVariable()) {
+//        int eval_res2 = s_e2->eval("");
+//
+//        delete s_e2;
+//
+//        return new Div(s_e1, new Number(eval_res2));
+//    }
+        Div *temp =  new Div(s_e1, s_e2);
+        if (!temp->containsVariable()) {
+            int eval_res = temp->eval("");
+            delete temp;
+            return new Number(eval_res);
+        }
+        return temp;
     }
 };
-
 
 class List;
 
@@ -342,10 +541,8 @@ class ListNode {
     ListNode *next, *previous;
 
     friend class List;
-
 public:
     ListNode(Expression *value, ListNode *previous) : value(value), next(nullptr), previous(previous) {}
-
 };
 
 class List {
@@ -355,10 +552,8 @@ class List {
 public:
     List() : start(nullptr), end(nullptr), len(0) {}
 
-    int get_len() const { return len; }
-
     Expression *pop() {
-        if (start == end && start == nullptr)
+        if (start == end and start == nullptr)
             return nullptr;
         Expression *temp = end->value;
         if (start == end) {
@@ -375,7 +570,7 @@ public:
     }
 
     void add_to_end(Expression *v) {
-        if (start == nullptr && end == nullptr) {
+        if (start == nullptr and end == nullptr) {
             start = (end = new ListNode(v, nullptr));
         } else
             end = (end->next = new ListNode(v, end));
@@ -404,15 +599,13 @@ public:
 
     Expression *operator[](int n) {
         ListNode *current_pos = start;
-        for (int i = 0; i < n && current_pos != nullptr; ++i) { current_pos = current_pos->next; }
+        for (int i = 0; i < n and current_pos != nullptr; ++i) { current_pos = current_pos->next; }
         if (current_pos == nullptr)
-            throw "Invalid index of list!";
+            throw std::runtime_error("Invalid index of list!");
         return current_pos->value;
     }
 
-
     ~List() {
-//    bool b = true;
         ListNode *temp = start->next;
         delete start;
         while (temp != nullptr) {
@@ -422,7 +615,6 @@ public:
             temp = ttemp;
         }
     }
-
 };
 
 class Node {
@@ -431,7 +623,6 @@ class Node {
     String value;
 
     friend class RPN;
-
 public:
     Node(const String &string, Node *previous) : value(string), previous(previous), next(nullptr) {}
 
@@ -445,7 +636,7 @@ public:
     RPN() : startStack(nullptr), endStack(nullptr), endOperation(nullptr) {}
 
     void add_to_stack(const String &string) {
-        if (startStack == nullptr && endStack == nullptr)
+        if (startStack == nullptr and endStack == nullptr)
             startStack = (endStack = new Node(string, endStack));
         else
             endStack = (endStack->next = new Node(string, endStack));
@@ -465,8 +656,6 @@ public:
         char returnValue = endOperation->value[0];
         delete endOperation;
         endOperation = temp;
-//    if (temp != nullptr)
-//        temp->next = nullptr;
         return returnValue;
     }
 
@@ -503,7 +692,6 @@ public:
         }
     }
 };
-
 
 Expression *parse(std::ifstream &istream) {
     RPN rpn;
@@ -559,13 +747,15 @@ Expression *parse(std::ifstream &istream) {
 }
 
 int main() {
-    std::ofstream out;
-    std::ifstream in;
-    out.open("output.txt");
-    in.open("input.txt");
+    std::ofstream out("output.txt");
+    std::ifstream in("input.txt");
+//    out.open("output.txt");
+//    in.open("input.txt");
+
     Expression *c = parse(in);
     Expression *e = c->derivative("x");
     e->print(out);
+//    c->simple()->print(out);
     delete c;
     delete e;
     out.close();

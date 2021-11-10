@@ -90,22 +90,6 @@ String &String::operator=(const String &string) {
     return *this;
 }
 
-String String::operator+(const char *string) {
-    int newSize = size + get_len_of_NP(string);
-    char *newStr = new char[newSize + 1];
-    for (int i = 0; i < size; ++i)
-        newStr[i] = this->string[i];
-    for (int i = 0; string[i]; ++i)
-        newStr[size + i] = string[i];
-    newStr[newSize] = '\0';
-    return {newStr};
-}
-
-String String::operator+(const String &string) {
-    return *this + string.string;
-}
-
-
 bool String::operator==(const char *string) {
     if (size != get_len_of_NP(string))
         return false;

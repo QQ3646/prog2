@@ -1,9 +1,7 @@
 #include "SubClasses.h"
 
 
-Number::Number(int value) {
-    this->value = value;
-}
+Number::Number(int value) : value(value) {}
 
 Expression *Number::get_copy() {
     return new Number(value);
@@ -24,23 +22,20 @@ int Number::get_value() const { return value; }
 Expression *Number::simple() { return this->get_copy(); }
 
 bool Number::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    Number tempe2 = dynamic_cast<const Number &>(e2);
-    if (tempe2.value == this->value)
-        return true;
+    try {
+        auto &tempe2 = dynamic_cast<const Number &>(e2);
+        if (tempe2.value == value)
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
-bool Number::findX() {
+bool Number::containsVariable() {
     return false;
 }
 
 
-
-Variable::Variable(const String &string) {
-    this->name = string;
-}
+Variable::Variable(const String &string) : name(string) {}
 
 Expression *Variable::get_copy() {
     return new Variable(name);
@@ -83,21 +78,20 @@ Expression *Variable::simple() { return this->get_copy(); }
 const String &Variable::get_name() { return name; }
 
 bool Variable::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    const Variable *tempe2 = dynamic_cast<const Variable *>(&e2);
-    if ((String)tempe2->name == this->name)
-        return true;
+    try {
+        auto &tempe2 = const_cast<Variable&>(dynamic_cast<const Variable &>(e2));
+        if (tempe2.name == this->name)
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
-bool Variable::findX() {
+bool Variable::containsVariable() {
     return true;
 }
 
 
-
-Add::Add(Expression *first, Expression *second) : Operations(first, second, '+') {}
+Add::Add(Expression *first, Expression *second) : Binary(first, second, '+') {}
 
 Expression *Add::get_copy() {
     return new Add(first->get_copy(), second->get_copy());
@@ -113,29 +107,25 @@ Expression *Add::simple() {
     Expression *s_e1 = this->first->simple();
     Expression *s_e2 = this->second->simple();
     Add *temp = new Add(s_e1, s_e2);
-    if (!temp->findX()) {
+    if (!temp->containsVariable()) {
         int eval_res = temp->eval("");
-
         delete temp;
-
         return new Number(eval_res);
     }
     return temp;
 }
 
 bool Add::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    const Add *tempe2 = dynamic_cast<const Add *>(&e2);
-    if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
-        (*tempe2->first == *this->second and *tempe2->second == *this->first))
-        return true;
+    try {
+        auto &tempe2 = const_cast<Add &>(dynamic_cast<const Add &>(e2));
+        if (Binary::operator==(tempe2) || Binary::operator!=(tempe2))
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
 
-
-Sub::Sub(Expression *first, Expression *second) : Operations(first, second, '-') {}
+Sub::Sub(Expression *first, Expression *second) : Binary(first, second, '-') {}
 
 Expression *Sub::get_copy() {
     return new Sub(first->get_copy(), second->get_copy());
@@ -157,7 +147,7 @@ Expression *Sub::simple() {
         return new Number(0);
     }
     Sub *temp = new Sub(s_e1, s_e2);
-    if (!temp->findX()) {
+    if (!temp->containsVariable()) {
         int eval_res = temp->eval("");
 
         delete temp;
@@ -168,17 +158,16 @@ Expression *Sub::simple() {
 }
 
 bool Sub::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    const Sub *tempe2 = dynamic_cast<const Sub *>(&e2);
-    if (*tempe2->first == *this->first and *tempe2->second == *this->second)
-        return true;
+    try {
+        auto &tempe2 = const_cast<Sub &>(dynamic_cast<const Sub &>(e2));
+        if (Binary::operator==(tempe2))
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
 
-
-Mul::Mul(Expression *first, Expression *second) : Operations(first, second, '*') {}
+Mul::Mul(Expression *first, Expression *second) : Binary(first, second, '*') {}
 
 Expression *Mul::get_copy() {
     return new Mul(first->get_copy(), second->get_copy());
@@ -192,57 +181,42 @@ Expression *Mul::derivative(const String &string) {
 int Mul::eval(const String &string) { return first->eval(string) * second->eval(string); }
 
 bool Mul::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    const Mul *tempe2 = dynamic_cast<const Mul *>(&e2);
-    if ((*tempe2->first == *this->first and *tempe2->second == *this->second) or
-        (*tempe2->first == *this->second and *tempe2->second == *this->first))
-        return true;
+    try {
+        auto &tempe2 = const_cast<Mul &>(dynamic_cast<const Mul &>(e2));
+        if (Binary::operator==(tempe2) || Binary::operator!=(tempe2))
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
 Expression *Mul::simple() {
     Expression *s_e1 = this->first->simple();
     Expression *s_e2 = this->second->simple();
-    if (typeid(*s_e1) == typeid(Number)) {
-        Number *temp = dynamic_cast<Number *>(s_e1);
-        if (temp->get_value() == 0) {
-            delete s_e1;
-            delete s_e2;
 
-            return new Number(0);
-        } else if (temp->get_value() == 1) {
-            delete s_e1;
-
-            if (!s_e2->findX()) {
-                int eval_res2 = s_e2->eval("");
-
+    for (int i = 0; i < 2; ++i) {
+        if (typeid(*s_e1) == typeid(Number)) {
+            auto &temp = dynamic_cast<Number &>(*s_e1);
+            if (temp.get_value() == 0) {
+                delete s_e1;
                 delete s_e2;
 
-                return new Number(eval_res2);
-            }
-
-            return s_e2;
-        }
-    } else if (typeid(*s_e2) == typeid(Number)) {
-        Number *temp = dynamic_cast<Number *>(s_e2);
-        if (temp->get_value() == 0) {
-            delete s_e1;
-            delete s_e2;
-
-            return new Number(0);
-        } else if (temp->get_value() == 1) {
-            delete s_e2;
-            if (!s_e1->findX()) {
-                int eval_res2 = s_e1->eval("");
+                return new Number(0);
+            } else if (temp.get_value() == 1) {
                 delete s_e1;
-                return new Number(eval_res2);
+                if (!s_e2->containsVariable()) {
+                    int eval_res2 = s_e2->eval("");
+                    delete s_e2;
+                    return new Number(eval_res2);
+                }
+                return s_e2;
             }
-            return s_e1;
         }
+        Expression *t_s = s_e1;
+        s_e1 = s_e2;
+        s_e2 = t_s;
     }
     Mul *temp = new Mul(s_e1, s_e2);
-    if (!temp->findX()) {
+    if (!temp->containsVariable()) {
         int eval_res = temp->eval("");
         delete temp;
         return new Number(eval_res);
@@ -251,8 +225,7 @@ Expression *Mul::simple() {
 }
 
 
-
-Div::Div(Expression *first, Expression *second) : Operations(first, second, '/') {}
+Div::Div(Expression *first, Expression *second) : Binary(first, second, '/') {}
 
 Expression *Div::get_copy() {
     return new Div(first->get_copy(), second->get_copy());
@@ -267,11 +240,11 @@ Expression *Div::derivative(const String &string) {
 int Div::eval(const String &string) { return first->eval(string) / second->eval(string); }
 
 bool Div::operator==(const Expression &e2) {
-    if (typeid(*this) != typeid(e2))
-        return false;
-    Div tempe2 = dynamic_cast<const Div &>(e2);
-    if (*tempe2.first == *this->first and *tempe2.second == *this->second)
-        return true;
+    try {
+        auto &tempe2 = const_cast<Div &>(dynamic_cast<const Div &>(e2));
+        if (Binary::operator==(tempe2))
+            return true;
+    } catch (std::bad_cast &ex) {}
     return false;
 }
 
@@ -284,29 +257,8 @@ Expression *Div::simple() {
 
         return new Number(1);
     }
-//    if (!s_e1->findX() && !s_e2->findX()) {
-//        int eval_res1 = s_e1->eval("");
-//        int eval_res2 = s_e2->eval("");
-//
-//        delete s_e1;
-//        delete s_e2;
-//
-//        return new Number(eval_res1 / eval_res2);
-//    } else if (!s_e1->findX()) {
-//        int eval_res1 = s_e1->eval("");
-//
-//        delete s_e1;
-//
-//        return new Div(new Number(eval_res1), s_e2);
-//    } else if (!s_e2->findX()) {
-//        int eval_res2 = s_e2->eval("");
-//
-//        delete s_e2;
-//
-//        return new Div(s_e1, new Number(eval_res2));
-//    }
-    Div *temp =  new Div(s_e1, s_e2);
-    if (!temp->findX()) {
+    Div *temp = new Div(s_e1, s_e2);
+    if (!temp->containsVariable()) {
         int eval_res = temp->eval("");
         delete temp;
         return new Number(eval_res);

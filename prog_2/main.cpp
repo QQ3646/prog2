@@ -1,5 +1,4 @@
 #include <iostream>
-#include "Expressions/SubClasses.h"
 #include "Reverse polish notation/RPN.h"
 
 Expression *parse(std::ifstream &istream) {
@@ -42,7 +41,7 @@ Expression *parse(std::ifstream &istream) {
     while ((current = rpn.pop_stack())[0] != '\0') {
         if (isdigit(current[0])) {
             int num = 0;
-            for (int i = 0; current[i]; ++i) { num = num * 10 + (current[i] - '0'); }
+            for (int i = 0; i < current.get_len(); ++i) { num = num * 10 + (current[i] - '0'); }
             list.add_to_end(new Number(num));
         } else if (isalpha(current[0])) {
             list.add_to_end(new Variable(current));

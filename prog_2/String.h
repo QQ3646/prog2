@@ -26,10 +26,6 @@ public:
 
     String &operator=(const String &string);
 
-    String operator+(const char *string);
-
-    String operator+(const String &string);
-
     bool operator==(const char *string);
 
     bool operator==(const String &string);

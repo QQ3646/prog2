@@ -1,4 +1,3 @@
-#pragma once
 #include "Expression.cpp"
 
 class Number : public Expression {
@@ -21,7 +20,7 @@ public:
 
     bool operator==(const Expression &e2);
 
-    bool findX();
+    bool containsVariable();
 };
 
 class Variable : public Expression {
@@ -43,10 +42,10 @@ public:
 
     bool operator==(const Expression &e2);
 
-    bool findX();
+    bool containsVariable();
 };
 
-class Add : public Operations {
+class Add : public Binary {
 public:
     Add(Expression *first, Expression *second);
 
@@ -61,7 +60,7 @@ public:
     bool operator==(const Expression &e2);
 };
 
-class Sub : public Operations {
+class Sub : public Binary {
 public:
     Sub(Expression *first, Expression *second);
 
@@ -76,7 +75,7 @@ public:
     bool operator==(const Expression &e2);
 };
 
-class Mul : public Operations {
+class Mul : public Binary {
 public:
     Mul(Expression *first, Expression *second);
 
@@ -91,7 +90,7 @@ public:
     bool operator==(const Expression &e2);
 };
 
-class Div : public Operations {
+class Div : public Binary {
 public:
     Div(Expression *first, Expression *second);
 
