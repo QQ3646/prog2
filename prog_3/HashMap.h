@@ -30,11 +30,16 @@ public:
         return !(*this == pair);
     }
 
-    ~Pair() = default;
+    bool is_empty() {
+        if (*this == Pair<K, V>())
+            return true;
+        return false;
+    }
 };
 
 template<typename K, typename V>
 class HashMap {
+protected:
     size_t size;
     const float overfull = .6;
     size_t allocated_mem;
@@ -42,26 +47,23 @@ class HashMap {
 
     Pair<K, V> *values;
 
-    bool add_to_array(Pair<K, V> *array, size_t size_a, K key, V value) {
-        size_t start_ind = getHash(key);
+    virtual bool add_to_array(Pair<K, V> *array, size_t size_a, K key, V value) {
+        size_t start_ind = get_hash(key);
         size_t current_ind = start_ind;
         while (true) {
-            if (current_ind == size_a) {
+            if (current_ind == size_a)
                 current_ind = 0;
-            }
-            if (array[current_ind].get_flag() || array[current_ind] == Pair<K, V>()) { //Если пара умерла или пустая
+            if (array[current_ind].get_flag() || array[current_ind].is_empty()) { //Если пара умерла или пустая
                 array[current_ind] = Pair<K, V>(key, value);
-//                size++;
                 return true;
             } else if (array[current_ind].get_key() == key) {
                 array[current_ind] = Pair<K, V>(key, value);
                 return false;
             }
-            else {
-                current_ind++;
-            }
+            current_ind++;
         }
     }
+
 public:
     size_t get_len() {
         return size;
@@ -73,7 +75,7 @@ public:
         buffer_size *= 2;
     }
 
-    size_t getHash(K key) {
+    size_t get_hash(K key) {
         std::hash<K> hash;
         return hash(key) % allocated_mem;
     }
@@ -82,75 +84,53 @@ public:
         auto *new_pair = new Pair<K, V>[buffer_size];
         size_t temp = allocated_mem;
         allocated_mem = buffer_size;
-        for (int i = 0; i < temp; ++i) {
-            if (values[i].get_key() != K() && values[i].get_value() != V() && !(values[i].get_flag())) {
-//                size_t temp_hash = getHash(values[i].get_key());
-//                new_pair[temp_hash] = Pair<K, V>(values[i].get_key(), values[i].get_value());
-                add_to_array(new_pair, allocated_mem, values[i].get_key(), values[i].get_value());
-            }
+//        for (int i = 0; i < temp; ++i) {
+        for (auto elem: *this) {
+//            if (!values[i].is_empty() && !values[i].get_flag())
+                add_to_array(new_pair, allocated_mem, elem.get_key(), elem.get_value());
         }
         buffer_size *= 2;
         delete[] values;
         values = new_pair;
     }
 
-    void add(K key, V value) {
+    virtual void add(K key, V value) {
         if (float(size + 1) / allocated_mem >= overfull)
             rehash();
-//        size_t start_ind = getHash(key);
-//        size_t current_ind = start_ind;
-//        while (true) {
-//            if (current_ind == allocated_mem) {
-//                current_ind = 0;
-//            }
-//            if (values[current_ind].get_flag() || values[current_ind] == Pair<K, V>()) { //Если пара умерла или пустая
-//                values[current_ind] = Pair<K, V>(key, value);
-//                size++;
-//                break;
-//            } else if (values[current_ind].get_key() == key) {
-//                values[current_ind] = Pair<K, V>(key, value);
-//                return;
-//            }
-//            else {
-//                current_ind++;
-//            }
-//        }
         if (add_to_array(values, allocated_mem, key, value))
             size++;
     }
 
-    V &operator[](K key) {
+    V operator[](K key) {
         size_t start_ind = getHash(key);
         size_t current_ind = start_ind;
         bool loop = false;
-        int i = start_ind;
-        while (i++ < allocated_mem*2) {
+        while (true) {
             if (current_ind == allocated_mem) {
                 current_ind = 0;
                 loop = true;
-            } else if (loop && current_ind == start_ind) {
-                throw std::runtime_error("Ключа не существует в хэш-таблице!");
-            }
-            if (values[current_ind].get_key() == key) {
+            } else if (loop && current_ind == start_ind)
+                throw std::runtime_error("Ключа не существует в хэш-таблице!"); //?
+            if (values[current_ind].is_empty())
+                return V{};
+            else if (values[current_ind].get_key() == key)
                 return values[current_ind].get_value();
-            }
             current_ind++;
         }
     }
 
-    void remove(K key) {
-        size_t start_ind = getHash(key);
+    virtual void remove(K key) {
+        size_t start_ind = get_hash(key);
         size_t current_ind = start_ind;
         bool loop = false;
-        int i = start_ind;
-        while (i++ < allocated_mem*2) {
+        while (!(loop && current_ind == start_ind)) {
             if (current_ind == allocated_mem) {
                 current_ind = 0;
                 loop = true;
-            } else if (loop && current_ind == start_ind) {
-                return;
             }
-            if (values[current_ind].get_key() == key && !values[current_ind].get_flag()) {
+            if (values[current_ind].is_empty())
+                return;
+            else if (values[current_ind].get_key() == key && !values[current_ind].get_flag()) {
                 values[current_ind].make_deleted();
                 size--;
                 return;
@@ -172,9 +152,7 @@ public:
         Iterator(Pair<K, V> *pair, size_t pos, size_t alloc_size) : pair(pair), pos(pos), alloc_size(alloc_size) {}
 
         Iterator(const Iterator &iterator) {
-            pair = iterator.pair;
-            pos = iterator.pos;
-            alloc_size = iterator.alloc_size;
+            *this = iterator;
         }
 
         Iterator &operator=(const Iterator &iterator) {
@@ -205,32 +183,29 @@ public:
         Iterator operator++() {
             int change_ind = 1;
             while (pos + change_ind < alloc_size) {
-                if ((pair + change_ind)->get_key() != K() && (pair + change_ind)->get_value() != V() && !(pair + change_ind)->get_flag()) {
+                if (!(pair + change_ind)->is_empty() && !(pair + change_ind)->get_flag()) {
                     *this = Iterator(pair + change_ind, pos + change_ind, alloc_size);
                     return *this;
-                } else change_ind++;
+                }
+                change_ind++;
             }
             *this = Iterator();
             return *this;
         }
     };
 
-    HashMap<K, V>::Iterator begin() const {
+    Iterator begin() {
         size_t current_ind = 0;
         while (true) {
-            if (current_ind == allocated_mem) {
+            if (current_ind == allocated_mem)
                 return HashMap<K, V>::Iterator();
-            }
-            if (values[current_ind].get_key() != K() && values[current_ind].get_value() != V() && !values[current_ind].get_flag()) {
+            if (!values[current_ind].is_empty() && !values[current_ind].get_flag())
                 return HashMap<K, V>::Iterator(&values[current_ind], current_ind, allocated_mem);
-            }
             current_ind++;
         }
     }
 
-    HashMap<K, V>::Iterator end() const {
+    Iterator end() {
         return Iterator();
     }
 };
-
-

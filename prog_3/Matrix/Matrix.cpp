@@ -1,5 +1,4 @@
 #include "Matrix.h"
-#include "iostream"
 
 MatrixPart::MatrixPart(int num, Matrix &matrix, bool flag) : num(num), matrix(matrix), flag(flag), matrixExist(true) {
     if (num >= matrix.size)  // Вынес сюда проверку на недействительный номер чтобы не писать дважды
@@ -43,7 +42,7 @@ void Matrix::deleteMem() {
 }
 
 Matrix::Matrix() {
-    usedPart = new List();
+    usedPart = new List<MatrixPart>();
     size = 0;
     values = nullptr;
 }
@@ -52,7 +51,7 @@ Matrix::Matrix(int size) : Matrix(size, 1) {}
 
 // Вынес все аллокации памяти в один конструктор, не знаю, надо было ли, но мне так нравится чуть больше
 Matrix::Matrix(int size, int value) : size(size) {
-    usedPart = new List();
+    usedPart = new List<MatrixPart>();
     allocateMem();
     for (int i = 0; i < size; ++i)
         values[i][i] = value;
@@ -69,7 +68,9 @@ Matrix::Matrix(int size, std::istream &istream) : Matrix(size, 0) {
             istream >> values[i][j];
 }
 
-
+Matrix::Matrix(const Matrix &matrix) : Matrix(){
+    *this = matrix;
+}
 
 Matrix &Matrix::operator=(const Matrix &matrix) {
     if (this == &matrix)
@@ -77,7 +78,7 @@ Matrix &Matrix::operator=(const Matrix &matrix) {
 
     usedPart->make_inaccessible();
     delete usedPart;
-    usedPart = new List();
+    usedPart = new List<MatrixPart>();
 
     if (size != matrix.size) {
         int **newValues = new int *[matrix.size];
@@ -187,6 +188,11 @@ Matrix Matrix::operator~() {
     return newM;
 }
 
+Matrix::~Matrix() {
+    usedPart->make_inaccessible();
+    deleteMem();
+}
+
 std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
     for (int i = 0; i < matrix.size; ++i) {
         for (int j = 0; j < matrix.size; ++j)
@@ -196,7 +202,9 @@ std::ostream &operator<<(std::ostream &ostream, const Matrix &matrix) {
     return ostream;
 }
 
-Matrix::~Matrix() {
-    usedPart->make_inaccessible();
-    deleteMem();
+std::istream &operator>>(std::istream &istream, Matrix &matrix) {
+    int tsize;
+    istream >> tsize;
+    matrix = Matrix(tsize, istream);
+    return istream;
 }

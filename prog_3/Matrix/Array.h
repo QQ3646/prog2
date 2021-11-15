@@ -1,30 +1,116 @@
-#pragma once
-#include "Matrix.h"
-
-class MatrixPart;
-
-class Node {
-    Node *next;
-    MatrixPart *mp_adress;
-
-    friend class List;
-public:
-    Node(MatrixPart *mp_adress);
-}
-
+template<typename V>
 class List {
-    Node *head, *end;
+    class Node {
+        Node *next;
+        V *value;
+
+        friend class List;
+    public:
+        Node(V *value) : next(nullptr), value(value) {};
+    };
+    Node *head, *endN;
 public:
-    List();
+    void push_back(V *value) {
+        Node *newN = new Node(value);
+        if (head == nullptr && endN == nullptr) {
+            head = newN;
+            endN = newN;
+        } else {
+            endN->next = newN;
+        }
+    }
 
-//    List(const List &list);
+    void find_and_delete(V *value) {
+        if(value == head->value && value == endN->value) {
+            delete head;
+            endN = head = nullptr;
+        } else if (value == head->value) {
+            Node *temp = head->next;
+            delete head;
+            head = temp;
+        } else {
+            Node *previousNode = nullptr;
+            Node *currentNode = head;
+            while (currentNode != nullptr and currentNode->value != value) {
+                previousNode = currentNode;
+                currentNode = currentNode->next;
+            }
+            if (currentNode == nullptr)
+                return;
+            Node *temp = currentNode->next;
+            delete currentNode;
+            previousNode->next = temp;
+        }
+    }
 
-    void push_back(MatrixPart *mp_adress);
+    void make_inaccessible() {
+        Node *current = head;
+        while (current != nullptr) {
+            current->value->makeInaccessible();
+            current = current->next;
+        }
+    }
 
-    void find_and_delete(MatrixPart *mp_adress);
+    ~List() {
+        Node *current = head;
+        while (current != nullptr) {
+            Node *temp = head->next;
+            delete current;
+            current = temp;
+        }
+    }
 
-    void make_inaccessible();
+    class Iterator {
+        Node *value;
+        int pos;
+    public:
+        Iterator() : value(nullptr), pos(0) {}
 
-    ~List();
+        Iterator(Node *value, int pos) : value(value), pos(pos) {}
+
+        Iterator(const Iterator &iterator) {
+            *this = iterator;
+        }
+
+        V &operator*() {
+            if (value != nullptr)
+                return *value->value;
+        }
+
+        Iterator &operator=(const Iterator &iterator) {
+            if (this == &iterator)
+                return *this;
+            *this = Iterator(iterator.value, iterator.pos);
+            return *this;
+        }
+
+        bool operator==(const Iterator &iterator) {
+            if (value == iterator.value)
+                return true;
+            return false;
+        }
+
+        bool operator!=(const Iterator &iterator) {
+            if (*this == iterator)
+                return false;
+            return true;
+        }
+
+        Iterator operator++() {
+            if (value == nullptr || value->next == nullptr)
+                return Iterator();
+            pos++;
+            value = value->next;
+            return *this;
+        }
+    };
+
+    Iterator begin() {
+        return Iterator(head, 0);
+    }
+
+    Iterator end() {
+        return Iterator();
+    }
 };
 
