@@ -2,6 +2,8 @@
 #include <functional>
 
 
+#include <functional>
+
 template<typename K, typename V>
 class Pair {
     K key;
@@ -41,6 +43,7 @@ public:
 
 template<typename K, typename V>
 class HashMap {
+protected:
     size_t size;
     const float overfull = .6;
     size_t allocated_mem;
@@ -48,13 +51,12 @@ class HashMap {
 
     Pair<K, V> *values;
 
-    bool add_to_array(Pair<K, V> *array, size_t size_a, K key, V value) {
+    virtual bool add_to_array(Pair<K, V> *array, size_t size_a, K key, V value) {
         size_t start_ind = get_hash(key);
         size_t current_ind = start_ind;
         while (true) {
-            if (current_ind == size_a) {
+            if (current_ind == size_a)
                 current_ind = 0;
-            }
             if (array[current_ind].get_flag() || array[current_ind].is_empty()) { //Если пара умерла или пустая
                 array[current_ind] = Pair<K, V>(key, value);
                 return true;
@@ -84,18 +86,17 @@ public:
 
     void rehash() {
         auto *new_pair = new Pair<K, V>[buffer_size];
-        size_t temp = allocated_mem;
-        allocated_mem = buffer_size;
-        for (int i = 0; i < temp; ++i) {
-            if (!values[i].is_empty() && !values[i].get_flag())
-                add_to_array(new_pair, allocated_mem, values[i].get_key(), values[i].get_value());
+        for (auto elem: *this) {
+            add_to_array(new_pair, buffer_size, elem.get_key(), elem.get_value());
         }
+        allocated_mem = buffer_size;
+
         buffer_size *= 2;
         delete[] values;
         values = new_pair;
     }
 
-    void add(K key, V value) {
+    virtual void add(K key, V value) {
         if (float(size + 1) / allocated_mem >= overfull)
             rehash();
         if (add_to_array(values, allocated_mem, key, value))
@@ -120,7 +121,7 @@ public:
         }
     }
 
-    void remove(K key) {
+    virtual void remove(K key) {
         size_t start_ind = get_hash(key);
         size_t current_ind = start_ind;
         bool loop = false;
@@ -128,8 +129,7 @@ public:
             if (current_ind == allocated_mem) {
                 current_ind = 0;
                 loop = true;
-            } else if (loop && current_ind == start_ind)
-                return;
+            }
             if (values[current_ind].is_empty())
                 return;
             else if (values[current_ind].get_key() == key && !values[current_ind].get_flag()) {
@@ -154,9 +154,7 @@ public:
         Iterator(Pair<K, V> *pair, size_t pos, size_t alloc_size) : pair(pair), pos(pos), alloc_size(alloc_size) {}
 
         Iterator(const Iterator &iterator) {
-            pair = iterator.pair;
-            pos = iterator.pos;
-            alloc_size = iterator.alloc_size;
+            *this = iterator;
         }
 
         Iterator &operator=(const Iterator &iterator) {
@@ -187,7 +185,7 @@ public:
         Iterator operator++() {
             int change_ind = 1;
             while (pos + change_ind < alloc_size) {
-                if (!(pair + change_ind)->is_empty() && !(pair + change_ind)->get_flag()) {
+                if (!(pair + change_ind)->is_empty() && !((pair + change_ind)->get_flag())) {
                     *this = Iterator(pair + change_ind, pos + change_ind, alloc_size);
                     return *this;
                 }
@@ -198,7 +196,7 @@ public:
         }
     };
 
-    HashMap<K, V>::Iterator begin() {
+    Iterator begin() {
         size_t current_ind = 0;
         while (true) {
             if (current_ind == allocated_mem)
@@ -209,7 +207,7 @@ public:
         }
     }
 
-    HashMap<K, V>::Iterator end() {
+    Iterator end() {
         return Iterator();
     }
 };

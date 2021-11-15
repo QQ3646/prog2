@@ -126,6 +126,21 @@ public:
         }
     }
 
+    void rehash() {
+        auto *new_pair = new Pair<K, V>[this->buffer_size];
+        for (auto elem: *this) {
+            add_to_array(new_pair, this->buffer_size, elem.get_key(), elem.get_value());
+        }
+        this->allocated_mem = this->buffer_size;
+
+        this->buffer_size *= 2;
+        delete[] this->values;
+        this->values = new_pair;
+        for (auto elem: used_values) {
+            elem.update();
+        }
+    }
+
     size_t count_values(K key) {
         size_t counter = 0;
         size_t start_ind = this->get_hash(key);
