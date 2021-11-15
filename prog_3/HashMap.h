@@ -82,13 +82,11 @@ public:
 
     void rehash() {
         auto *new_pair = new Pair<K, V>[buffer_size];
-        size_t temp = allocated_mem;
-        allocated_mem = buffer_size;
-//        for (int i = 0; i < temp; ++i) {
         for (auto elem: *this) {
-//            if (!values[i].is_empty() && !values[i].get_flag())
-                add_to_array(new_pair, allocated_mem, elem.get_key(), elem.get_value());
+            add_to_array(new_pair, buffer_size, elem.get_key(), elem.get_value());
         }
+        allocated_mem = buffer_size;
+
         buffer_size *= 2;
         delete[] values;
         values = new_pair;
