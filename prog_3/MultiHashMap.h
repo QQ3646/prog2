@@ -12,7 +12,9 @@ class MultiHashMap : public HashMap<K, V> {
         bool hashmap_exist;
         K key;
     public:
-        AVFK(K key, MultiHashMap<K, V> &hashMap, std::vector<size_t> vector) : key(key), hashMap(hashMap), vector(std::move(vector)), hashmap_exist(true) {
+        AVFK(K key, MultiHashMap<K, V> &hashMap, std::vector<size_t> vector) : key(key), hashMap(hashMap),
+                                                                               vector(std::move(vector)),
+                                                                               hashmap_exist(true) {
             hashMap.used_values->push_back(this);
         }
 
@@ -37,18 +39,14 @@ class MultiHashMap : public HashMap<K, V> {
             return hashMap.values[vector[index]].get_value();
         }
 
-        bool operator==(K key) {
-            if (this->key == key)
-                return true;
-            return false;
-        }
+        bool operator==(K key) { return this->key == key; }
 
         void update() {
             if (hashmap_exist)
                 return;
             vector.clear();
-            for(int i = 0; i < hashMap.size; i++) {
-                if(!hashMap.values[i].is_empty()) {
+            for (int i = 0; i < hashMap.size; i++) {
+                if (!hashMap.values[i].is_empty()) {
                     vector.push_back(i);
                 }
             }
@@ -79,6 +77,13 @@ class MultiHashMap : public HashMap<K, V> {
             current_ind++;
         }
     }
+
+    void update_list(HashMap<K, V> &array) {
+        for (auto elem: *dynamic_cast<MultiHashMap<K, V> &>(array).used_values) {
+            elem.update();
+        }
+    }
+
 public:
 
     // Чисто теоретически, если поиск элемента здесь должен возвращать любой элемент, то самый первый в списке должен подойти
@@ -101,20 +106,22 @@ public:
         }
     }
 
-    void remove(K key) {
+    int remove(K key) {
         size_t start_ind = this->get_hash(key);
         size_t current_ind = start_ind;
         bool loop = false;
+        int counter = 0;
         while (!(loop && current_ind == start_ind)) {
             if (current_ind == this->allocated_mem) {
                 current_ind = 0;
                 loop = true;
             }
             if (this->values[current_ind].is_empty())
-                return;
+                break;
             else if (this->values[current_ind].get_key() == key && !this->values[current_ind].get_flag()) {
                 this->values[current_ind].make_deleted();
                 this->size--;
+                counter++;
             }
             current_ind++;
         }
@@ -124,21 +131,11 @@ public:
                 break;
             }
         }
+        return counter;
     }
 
     void rehash() {
-        auto *new_pair = new Pair<K, V>[this->buffer_size];
-        for (auto elem: *this) {
-            add_to_array(new_pair, this->buffer_size, elem.get_key(), elem.get_value());
-        }
-        this->allocated_mem = this->buffer_size;
-
-        this->buffer_size *= 2;
-        delete[] this->values;
-        this->values = new_pair;
-        for (auto elem: used_values) {
-            elem.update();
-        }
+        this->base_rehash((void (*)(HashMap<K, V> &)) (&this->update_list));
     }
 
     size_t count_values(K key) {
@@ -147,7 +144,7 @@ public:
         size_t current_ind = start_ind;
         bool loop = false;
         while (!(loop && current_ind == start_ind)) { // Мне оч не нравятся эти while'ы везде, но не знаю чем заменить
-                                                      // Возможно foreach бы подошел, но он бы начинал с начала, а не с ключа
+            // Возможно foreach бы подошел, но он бы начинал с начала, а не с ключа
             if (current_ind == this->allocated_mem) {
                 current_ind = 0;
                 loop = true;
@@ -163,8 +160,8 @@ public:
 
     AVFK get_values(K key) {
         std::vector<size_t> indexes;
-        for(int i = 0; i < this->allocated_mem; i++) {
-            if(!this->values[i].is_empty()) {
+        for (int i = 0; i < this->allocated_mem; i++) {
+            if (!this->values[i].is_empty()) {
                 indexes.push_back(i);
             }
         }

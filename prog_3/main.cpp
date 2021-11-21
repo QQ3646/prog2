@@ -56,21 +56,32 @@ void check_key(char key, char value) {
 }
 
 int main() {
-//    map<Matrix, Matrix>();
-    MultiHashMap<int, int> multiHashMap;
-    multiHashMap.add(43, 656);
-    multiHashMap.add(43, 1);
-    multiHashMap.add(43, 111);
-    multiHashMap.add(7, 12);
-    std::cout << multiHashMap.count_values(43) << " ";
-    multiHashMap.get_values(43);
-    std::cout << multiHashMap.get_values(43)[1] << std::endl;
-    int *a = multiHashMap.get_values(43).get_array();
-    size_t count = multiHashMap.count_values(43);
-    for(int i = 0; i < count; i++) {
-        std::cout << a[i] << " ";
+    MultiHashMap<int, int> a;
+    a.add(43, 656);
+    a.add(42, 1);
+    a.add(41, 111);
+    a.add(7, 12);
+    a.add(46, 1);
+    a.add(47, 111);
+    a.add(73, 12);
+    for (auto elem: a) {
+        std::cout << elem.get_key() << " " << elem.get_value() << "\n";
     }
-    delete[] a;
+//    MultiHashMap<int, int> multiHashMap;
+//    multiHashMap.add(43, 656);
+//    multiHashMap.add(43, 1);
+//    multiHashMap.add(43, 111);
+//    multiHashMap.add(7, 12);
+//    std::cout << multiHashMap.count_values(43) << " ";
+//    multiHashMap.get_values(43);
+//    std::cout << multiHashMap.get_values(43)[1] << std::endl;
+//    int *a = multiHashMap.get_values(43).get_array();
+//    size_t count = multiHashMap.count_values(43);
+//    for(int i = 0; i < count; i++) {
+//        std::cout << a[i] << " ";
+//    }
+//
+//    delete[] a;
 //    multiHashMap.get_values(43);
 //    multiHashMap.remove(43);
 //    char key_type, value_type;

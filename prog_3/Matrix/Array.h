@@ -5,9 +5,11 @@ class List {
         V *value;
 
         friend class List;
+
     public:
         Node(V *value) : next(nullptr), value(value) {};
     };
+
     Node *head, *endN;
 public:
     void push_back(V *value) {
@@ -21,7 +23,7 @@ public:
     }
 
     void find_and_delete(V *value) {
-        if(value == head->value && value == endN->value) {
+        if (value == head->value && value == endN->value) {
             delete head;
             endN = head = nullptr;
         } else if (value == head->value) {
@@ -77,6 +79,11 @@ public:
                 return *value->value;
         }
 
+        V *operator->(){
+            if (value != nullptr)
+                return value->value;
+        }
+
         Iterator &operator=(const Iterator &iterator) {
             if (this == &iterator)
                 return *this;
@@ -84,17 +91,9 @@ public:
             return *this;
         }
 
-        bool operator==(const Iterator &iterator) {
-            if (value == iterator.value)
-                return true;
-            return false;
-        }
+        bool operator==(const Iterator &iterator) { return value == iterator.value; }
 
-        bool operator!=(const Iterator &iterator) {
-            if (*this == iterator)
-                return false;
-            return true;
-        }
+        bool operator!=(const Iterator &iterator) { return !(*this == iterator); }
 
         Iterator operator++() {
             if (value == nullptr || value->next == nullptr)
@@ -105,12 +104,12 @@ public:
         }
     };
 
-    Iterator begin() {
-        return Iterator(head, 0);
+    List<V>::Iterator begin() {
+        return List<V>::Iterator(head, 0);
     }
 
-    Iterator end() {
-        return Iterator();
+    List<V>::Iterator end() {
+        return List<V>::Iterator();
     }
 };
 
