@@ -6,7 +6,9 @@ class LexicalAnalyser {
     char current_char;
 
     void skipSpaces() {
-        while ((current_char = (char) input.get()) == ' ' || current_char == '\n' || current_char == '\t');
+        if (!(current_char == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r'))
+            return;
+        while ((current_char = (char) input.get()) == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r');
     }
 
     std::string readName() {
@@ -14,7 +16,7 @@ class LexicalAnalyser {
         skipSpaces();
         do
             res += current_char;
-        while (isalpha((current_char = (char) input.get())));
+        while (isalnum((current_char = (char) input.get())));
         return res;
     }
 
@@ -33,107 +35,95 @@ class LexicalAnalyser {
     }
 
 public:
-
-    explicit LexicalAnalyser(std::ifstream &input) : input(input), current_char('\0') {
-//        std::string temp;
-//        int scope_deep = 0;
-//        while (!input.eof()) {
-//            input >> temp;
-//            switch(temp) {
-//                case "Val":
-//                    break;
-//                case "Var":
-//                    break;
-//                case "add":
-//                    break;
-//                case "if":
-//                    break;
-//                case "let":
-//                    std::string id;
-//                    input >> id;
-//                    input >> temp;
-//
-//
-//                    break;
-//                case "function":
-//                    break;
-//                case "call":
-//                    break;
-//            }
-//
-//        }
-
-    }
+    explicit LexicalAnalyser(std::ifstream &input) : input(input), current_char('\0') {}
 
     Expression *recognizeExpression() {
-        do  {
-            if (current_char == '(') {
+        Expression *exp = nullptr;
+        while (current_char != ')') {
+            if ((current_char = (char) input.get()) == '(') {
+                current_char = (char) input.get();
                 auto res = readName();
+
                 if (res == "val") {
                     int value = readValue();
-                    auto *exp = new Val(value);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    exp = new Val(value);
                 } else if (res == "var") {
                     auto id = readName();
-                    auto *exp = new Var(id);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    exp = new Var(id);
                 } else if (res == "add") {
                     auto *e1 = recognizeExpression();
                     auto *e2 = recognizeExpression();
-                    auto *exp = new Add(e1, e2);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    exp = new Add(e1, e2);
                 } else if (res == "if") {
                     auto *e1 = recognizeExpression();
                     auto *e2 = recognizeExpression();
-                    auto temp = readName();
-                    if (temp != "then")
-                        break;
-                    auto *e_then = recognizeExpression();
-                    temp = readName();
-                    if (temp != "else")
-                        break;
-                    auto *e_else = recognizeExpression();
-                    auto *exp = new If(e1, e2, e_then, e_else);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    auto temp = readName();
+                    if (temp != "then") {
+                        delete e1;
+                        delete e2;
+                        break;
+                    }
+
+                    auto *e_then = recognizeExpression();
+
+                    temp = readName();
+                    if (temp != "else") { // Наверное как-то по-другому можно проверить ключевые слова...
+                        delete e1;
+                        delete e2;
+                        delete e_then;
+                        break;
+                    }
+
+                    auto *e_else = recognizeExpression();
+                    exp = new If(e1, e2, e_then, e_else);
                 } else if (res == "let") {
                     auto id = readName();
                     auto temp = readName();
+
                     if (temp != "=")
                         break;
-                    auto *e_value = recognizeExpression();
-                    temp = readName();
-                    if (temp != "in")
-                        break;
-                    auto *e_body = recognizeExpression();
-                    auto *exp = new Let(id, e_value, e_body);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    auto *e_value = recognizeExpression();
+
+                    temp = readName();
+                    if (temp != "in") {
+                        delete e_value;
+                        break;
+                    }
+
+                    auto *e_body = recognizeExpression();
+                    exp = new Let(id, e_value, e_body);
                 } else if (res == "function") {
                     auto id = readName();
                     auto f_body = recognizeExpression();
-                    auto *exp = new Function(id, f_body);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    exp = new Function(id, f_body);
                 } else if (res == "call") {
                     auto *f_exp = recognizeExpression();
                     auto *arg_expr = recognizeExpression();
-                    auto *exp = new Call(f_exp, arg_expr);
-                    current_char = (char) input.get();
 
-                    return exp;
+                    exp = new Call(f_exp, arg_expr);
+                } else if (res == "set") {
+                    auto id = readName();
+                    Expression *e_val = recognizeExpression();
+
+                    exp = new Set(id, e_val);
+                } else if (res == "block") {
+                    std::vector<Expression *> exp_list;
+                    Expression *t;
+                    while ((t = recognizeExpression()) != nullptr)
+                        exp_list.push_back(t);
+
+                    exp = new Block(exp_list);
                 }
             }
-        } while ((current_char = (char) input.get()) != ')');
-        return nullptr;
+        }
+        if (exp)
+            current_char = (char) input.get();
+        return exp;
     }
 };

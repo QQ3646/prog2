@@ -2,8 +2,9 @@
 
 int main() {
     std::ifstream ifstream("input.txt");
-    LexicalAnalyser analyser(ifstream);
-    Expression *exp = analyser.recognizeExpression();
+//    LexicalAnalyser analyser(ifstream);
+    Expression *exp = LexicalAnalyser(ifstream).recognizeExpression();
+//    exp->print();
     Environment env;
     Expression *new_e = exp->eval(env);
 //    exp->print();

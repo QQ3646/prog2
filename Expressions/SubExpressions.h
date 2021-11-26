@@ -1,5 +1,7 @@
 #include "Expression.h"
 #include <iostream>
+#include <string>
+#include <vector>
 
 class Val : public Expression {
     int value;
@@ -34,6 +36,8 @@ public:
 
     Expression *eval(Environment &env) override;
 
+    virtual ~Add();
+
 };
 
 class If : public Expression {
@@ -45,6 +49,8 @@ public:
     void print() override;
 
     Expression *eval(Environment &env) override;
+
+    virtual ~If();
 };
 
 class Let : public Expression {
@@ -56,6 +62,8 @@ public:
     void print() override;
 
     Expression *eval(Environment &env) override;
+
+    ~Let();
 };
 
 class Function : public Expression {
@@ -71,6 +79,8 @@ public:
     std::string &getId();
 
     Expression *getFBody();
+
+    ~Function() override;
 };
 
 class Call : public Expression{
@@ -81,4 +91,35 @@ public:
     Expression *eval(Environment &env) override;
 
     void print() override;
+
+    ~Call() override;
+};
+
+class Set : public Expression {
+    std::string id;
+    Expression *e_val;
+public:
+    Set(std::string id, Expression *e_val);
+
+    Expression *eval(Environment &env) override;
+
+    void print() override;
+
+    const std::string &getId() const;
+
+    Expression *getEVal() const;
+
+    ~Set() override;
+};
+
+class Block : public Expression {
+    std::vector<Expression *> exp_list;
+public:
+    Block(std::vector<Expression *> &vector);
+
+    Expression *eval(Environment &env) override;
+
+    void print() override;
+
+    ~Block() override;
 };

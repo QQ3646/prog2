@@ -1,7 +1,5 @@
 #include "Expressions/SubExpressions.h"
-#include <iostream>
 #include <typeinfo>
-#include <vector>
 
 class Environment {
     class Pair {
@@ -11,18 +9,22 @@ class Environment {
 
         friend class Environment;
     public:
-        Pair(int scope_num, std::string &id, Expression *expression);
+        Pair(int scope_num, std::string id, Expression *expression);
     };
 
     std::vector<Pair> list;
 public:
-    Expression *fromEnv(std::string &id);
+    Expression *fromEnv(const std::string &id);
 
     static int getValue(Expression *expression);
 
-    void addNewPair(int scope_num, std::string &id, Expression *expression);
+    void addNewPair(int scope_num, const std::string &id, Expression *expression);
 
     void clearScope(int scope_num);
 
+    int getCurrentScope();
+
     int getNewScope();
+
+    void setToStack(Expression *expression);
 };

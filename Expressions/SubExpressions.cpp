@@ -1,5 +1,6 @@
 #include "../Environment.h"
 
+
 // Val {
 Val::Val(int value) : value(value) {}
 
@@ -44,7 +45,16 @@ void Add::print() {
 }
 
 Expression *Add::eval(Environment &env) {
+    if (e1 == nullptr || e2 == nullptr) {
+        std::cout << "ERROR";
+        exit(0);
+    }
     return new Val(env.getValue(e1->eval(env)) + env.getValue(e2->eval(env)));
+}
+
+Add::~Add() {
+    delete e1;
+    delete e2;
 }
 // Add }
 
@@ -71,6 +81,13 @@ Expression *If::eval(Environment &env) {
     else
         return e_else->eval(env);
 }
+
+If::~If() {
+    delete e1;
+    delete e2;
+    delete e_then;
+    delete e_else;
+}
 // If }
 
 
@@ -86,11 +103,20 @@ void Let::print() {
 }
 
 Expression *Let::eval(Environment &env) {
+    if (e_value == nullptr || e_body == nullptr) {
+        std::cout << "ERROR";
+        exit(0);
+    }
     int scope_num = env.getNewScope();
     env.addNewPair(scope_num, id, e_value->eval(env));
     auto *exp = e_body->eval(env);
     env.clearScope(scope_num);
     return exp;
+}
+
+Let::~Let() {
+    delete e_value;
+    delete e_body;
 }
 // Let }
 
@@ -99,7 +125,7 @@ Expression *Let::eval(Environment &env) {
 Function::Function(std::string &id, Expression *fBody) : id(std::move(id)), f_body(fBody) {}
 
 void Function::print() {
-    std::cout << "(function " << id;
+    std::cout << "(function " << id << " ";
     f_body->print();
     std::cout << ")";
 }
@@ -113,7 +139,15 @@ std::string &Function::getId() {
 }
 
 Expression *Function::getFBody() {
+    if (f_body == nullptr){
+            std::cout << "ERROR";
+            exit(0);
+    }
     return f_body;
+}
+
+Function::~Function() {
+    delete f_body;
 }
 // Function }
 
@@ -134,6 +168,71 @@ Expression *Call::eval(Environment &env) {
 }
 
 void Call::print() {
+    std::cout << "(call ";
+    f_expr->print();
+    std::cout << " ";
+    arg_expr->print();
+    std::cout << ")";
+}
 
+Call::~Call() {
+    delete f_expr;
+    delete arg_expr;
 }
 // Call }
+
+// Set {
+Set::Set(std::string id, Expression *e_val) : id(std::move(id)), e_val(e_val){}
+
+Expression *Set::eval(Environment &env) {
+    env.setToStack(this);
+    return this;
+}
+
+void Set::print() {
+    std::cout << "(set " << id << " ";
+    e_val->print();
+    std::cout << ")";
+}
+
+const std::string &Set::getId() const {
+    return id;
+}
+
+Expression *Set::getEVal() const {
+    return e_val;
+}
+
+Set::~Set() {
+    delete e_val;
+}
+// Set }
+
+// Block {
+Block::Block(std::vector<Expression *> &vector) : exp_list(std::move(vector)) { }
+
+Expression *Block::eval(Environment &env) {
+    Expression *return_exp;
+    for (auto elem: exp_list) {
+        return_exp = elem->eval(env);
+    }
+    return return_exp;
+}
+
+void Block::print() {
+    std::cout << "(block";
+    for (auto expression: exp_list) {
+        std::cout << " ";
+        expression->print();
+    }
+    std::cout << ")";
+}
+
+Block::~Block() {
+    for (Expression *exp: exp_list) {
+        delete exp;
+    }
+}
+// Block }
+
+
