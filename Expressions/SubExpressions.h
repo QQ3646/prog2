@@ -5,50 +5,59 @@
 
 class Val : public Expression {
     int value;
+
+    void print(std::ostream &os) const override;
 public:
     explicit Val(int value);
 
-    Expression *eval(Environment &env) override;
+    Expression *copy() override;
 
-    void print() override;
+    Expression *eval(Environment &env) override;
 
     int get_value() const;
 };
 
 class Var : public Expression {
     std::string id;
+
+    void print(std::ostream &os) const override;
 public:
     explicit Var(std::string id);
 
+    Expression *copy() override;
+
     Expression *eval(Environment &env) override;
-
-    void print() override;
-
-    std::string get_id();
 };
 
 class Add : public Expression {
     Expression *e1, *e2;
+
+    void print(std::ostream &os) const override;
 public:
     Add(Expression *e1, Expression *e2);
 
-    void print() override;
+    Expression *copy() override;
 
     Expression *eval(Environment &env) override;
 
-    virtual ~Add();
+     bool syntaxCheck() override;
 
+    virtual ~Add();
 };
 
 class If : public Expression {
     Expression *e1, *e2;
     Expression *e_then, *e_else;
+
+    void print(std::ostream &os) const override;
 public:
     If(Expression *e1, Expression *e2, Expression *eThen, Expression *eElse);
 
-    void print() override;
+    Expression *copy() override;
 
     Expression *eval(Environment &env) override;
+
+     bool syntaxCheck() override;
 
     virtual ~If();
 };
@@ -56,23 +65,36 @@ public:
 class Let : public Expression {
     std::string id;
     Expression *e_value, *e_body;
+
+    void print(std::ostream &os) const override;
 public:
     Let(std::string id, Expression *eValue, Expression *e_body);
 
-    void print() override;
+    Expression *copy() override;
 
     Expression *eval(Environment &env) override;
 
-    ~Let();
+     bool syntaxCheck() override;
+
+    ~Let() override;
 };
 
 class Function : public Expression {
     std::string id;
     Expression *f_body;
-public:
-    Function(std::string &id, Expression *fBody);
 
-    void print() override;
+    Environment *lexicalEnv;  // Удобно, если было бы по значению, но к этому времени компиляции Environment незаконченный тип
+    // Не знаю, у меня и так зависимости убогие, но не знаю как лучше сделать
+
+    friend class Call;
+
+    void print(std::ostream &os) const override;
+public:
+    Function(std::string id, Expression *fBody);
+
+    Function(const Function &function);
+
+    Expression *copy() override;
 
     Expression * eval(Environment &env) override;
 
@@ -80,17 +102,25 @@ public:
 
     Expression *getFBody();
 
+    void copyLexEnv(Environment *lexicalEnv);
+
+     bool syntaxCheck() override;
+
     ~Function() override;
 };
 
 class Call : public Expression{
     Expression *f_expr, *arg_expr;
+
+    void print(std::ostream &os) const override;
 public:
     Call(Expression *fExpr, Expression *argExpr);
 
+    Expression *copy() override;
+
     Expression *eval(Environment &env) override;
 
-    void print() override;
+    bool syntaxCheck() override;
 
     ~Call() override;
 };
@@ -98,28 +128,36 @@ public:
 class Set : public Expression {
     std::string id;
     Expression *e_val;
+
+    void print(std::ostream &os) const override;
 public:
     Set(std::string id, Expression *e_val);
 
-    Expression *eval(Environment &env) override;
+    Expression *copy() override;
 
-    void print() override;
+    Expression *eval(Environment &env) override;
 
     const std::string &getId() const;
 
     Expression *getEVal() const;
+
+    bool syntaxCheck() override;
 
     ~Set() override;
 };
 
 class Block : public Expression {
     std::vector<Expression *> exp_list;
+
+    void print(std::ostream &os) const override;
 public:
-    Block(std::vector<Expression *> &vector);
+    Block(std::vector<Expression *> vector);
+
+    Expression *copy() override;
 
     Expression *eval(Environment &env) override;
 
-    void print() override;
+    bool syntaxCheck() override;
 
     ~Block() override;
 };

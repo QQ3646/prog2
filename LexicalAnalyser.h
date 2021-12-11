@@ -1,129 +1,113 @@
 #include <fstream>
-#include "Environment.h"
+#include <iostream>
+#include <regex>
+#include <sstream>
+#include "Expressions/SubExpressions.h"
+
 
 class LexicalAnalyser {
-    std::ifstream &input;
-    char current_char;
 
-    void skipSpaces() {
-        if (!(current_char == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r'))
-            return;
-        while ((current_char = (char) input.get()) == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r');
-    }
-
-    std::string readName() {
-        std::string res{};
-        skipSpaces();
-        do
-            res += current_char;
-        while (isalnum((current_char = (char) input.get())));
-        return res;
-    }
-
-    int readValue() {
-        int res{};
-        skipSpaces();
-        bool minus = false;
-        if (current_char == '-') {
-            minus = true;
-            current_char = (char) input.get();
-        }
-        do
-            res = res * 10 + (current_char - '0');
-        while (isdigit(((current_char = (char) input.get()))));
-        return !minus ? res : -res;
-    }
-
+    std::stringstream input_s;
 public:
-    explicit LexicalAnalyser(std::ifstream &input) : input(input), current_char('\0') {}
+    explicit LexicalAnalyser(std::ifstream& input_stream) {
+        std::string input_str(std::istreambuf_iterator<char>(input_stream), {});
+        input_str = regex_replace(input_str, std::regex(R"((\s*\(\s*)|(\s*\)\s*))"), " $& "); // добавить пробелы
+        input_str = regex_replace(input_str, std::regex(R"(\s+)"), " "); // убрать лишние пробельные символы
+        input_s << input_str;
+    }
 
-    Expression *recognizeExpression() {
-        Expression *exp = nullptr;
-        while (current_char != ')') {
-            if ((current_char = (char) input.get()) == '(') {
-                current_char = (char) input.get();
-                auto res = readName();
+    Expression* operator()() {
+        std::string t;
+        Expression* retExpr = nullptr;
+        while (!input_s.eof() && !retExpr && t != ")") {
+            input_s >> t;
+            if (t == "(") {
+                input_s >> t;
+                if (t == "val") {
+                    int value;
+                    input_s >> value;
 
-                if (res == "val") {
-                    int value = readValue();
+                    retExpr = new Val(value);
+                }
+                else if (t == "var") {
+                    std::string id;
+                    input_s >> id;
 
-                    exp = new Val(value);
-                } else if (res == "var") {
-                    auto id = readName();
+                    retExpr = new Var(id);
+                }
+                else if (t == "add") {
+                    retExpr = new Add(operator()(), operator()());
+                }
+                else if (t == "if") {
+                    Expression* leftEx = operator()(), * rightEx = operator()();
 
-                    exp = new Var(id);
-                } else if (res == "add") {
-                    auto *e1 = recognizeExpression();
-                    auto *e2 = recognizeExpression();
+                    std::string temp;
+                    input_s >> temp;
+                    if (temp != "then")
+                        std::cout << "Ага, опять, негодник, ключевые слова не вставляешь, да?";
 
-                    exp = new Add(e1, e2);
-                } else if (res == "if") {
-                    auto *e1 = recognizeExpression();
-                    auto *e2 = recognizeExpression();
+                    Expression* thenEx = operator()();
 
-                    auto temp = readName();
-                    if (temp != "then") {
-                        delete e1;
-                        delete e2;
-                        break;
-                    }
+                    input_s >> temp;
+                    if (temp != "else")
+                        std::cout << "Ага, опять, негодник, ключевые слова не вставляешь, да?";
 
-                    auto *e_then = recognizeExpression();
+                    Expression* elseEx = operator()();
 
-                    temp = readName();
-                    if (temp != "else") { // Наверное как-то по-другому можно проверить ключевые слова...
-                        delete e1;
-                        delete e2;
-                        delete e_then;
-                        break;
-                    }
+                    retExpr = new If(leftEx, rightEx, thenEx, elseEx);
+                }
+                else if (t == "let") {
+                    std::string id;
+                    input_s >> id;
 
-                    auto *e_else = recognizeExpression();
-                    exp = new If(e1, e2, e_then, e_else);
-                } else if (res == "let") {
-                    auto id = readName();
-                    auto temp = readName();
-
+                    std::string temp;
+                    input_s >> temp;
                     if (temp != "=")
-                        break;
+                        std::cout << "Ага, опять, негодник, ключевые слова не вставляешь, да?";
 
-                    auto *e_value = recognizeExpression();
+                    Expression* valueEx = operator()();
 
-                    temp = readName();
-                    if (temp != "in") {
-                        delete e_value;
-                        break;
+                    input_s >> temp;
+                    if (temp != "in")
+                        std::cout << "Ага, опять, негодник, ключевые слова не вставляешь, да?";
+
+                    Expression* bodyEx = operator()();
+
+                    retExpr = new Let(id, valueEx, bodyEx);
+                }
+                else if (t == "function") {
+                    std::string id;
+                    input_s >> id;
+
+                    retExpr = new Function(id, operator()());
+                }
+                else if (t == "call") {
+                    auto* f_e = operator()();
+                    auto* arg_e = operator()();
+                    retExpr = new Call(f_e, arg_e);
+                }
+                else if (t == "block") {
+                    std::vector<Expression*> t_v;
+                    Expression* t_e = operator()();
+                    while (t_e != nullptr) {
+                        t_v.push_back(t_e);
+                        t_e = operator()();
                     }
 
-                    auto *e_body = recognizeExpression();
-                    exp = new Let(id, e_value, e_body);
-                } else if (res == "function") {
-                    auto id = readName();
-                    auto f_body = recognizeExpression();
+                    retExpr = new Block(t_v);
+                }
+                else if (t == "set") {
+                    std::string id;
+                    input_s >> id;
 
-                    exp = new Function(id, f_body);
-                } else if (res == "call") {
-                    auto *f_exp = recognizeExpression();
-                    auto *arg_expr = recognizeExpression();
+                    auto* e = operator()();
 
-                    exp = new Call(f_exp, arg_expr);
-                } else if (res == "set") {
-                    auto id = readName();
-                    Expression *e_val = recognizeExpression();
-
-                    exp = new Set(id, e_val);
-                } else if (res == "block") {
-                    std::vector<Expression *> exp_list;
-                    Expression *t;
-                    while ((t = recognizeExpression()) != nullptr)
-                        exp_list.push_back(t);
-
-                    exp = new Block(exp_list);
+                    retExpr = new Set(id, e);
                 }
             }
         }
-        if (exp)
-            current_char = (char) input.get();
-        return exp;
+        if (retExpr)
+            input_s >> t;
+        return retExpr;
     }
 };

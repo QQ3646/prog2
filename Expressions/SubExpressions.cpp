@@ -1,15 +1,18 @@
-#include "../Environment.h"
+#include <algorithm>
+#include "SubExpressions.h"
 
-
-// Val {
 Val::Val(int value) : value(value) {}
 
-Expression *Val::eval(Environment &env) {
-    return this;
+Expression* Val::copy() {
+    return new Val(value);
 }
 
-void Val::print() {
-    std::cout << "(val " << value << ")";
+Expression* Val::eval(Environment& env) {
+    return copy();
+}
+
+void Val::print(std::ostream& os) const {
+    os << "(val " + std::to_string(value) + ")";
 }
 
 int Val::get_value() const { return value; }
@@ -19,37 +22,37 @@ int Val::get_value() const { return value; }
 // Var {
 Var::Var(std::string id) : id(std::move(id)) {}
 
-Expression *Var::eval(Environment &env) {
+Expression* Var::copy() {
+    return new Var(id);
+}
+
+Expression* Var::eval(Environment& env) {
     return env.fromEnv(id);
 }
 
-void Var::print() {
-    std::cout << "(var " << id << ")";
-}
-
-std::string Var::get_id() {
-    return id;
+void Var::print(std::ostream& os) const {
+    os << "(var " + id + ")";
 }
 // Var }
 
 
 // Add {
-Add::Add(Expression *e1, Expression *e2) : e1(e1), e2(e2) {}
+Add::Add(Expression* e1, Expression* e2) : e1(e1), e2(e2) {}
 
-void Add::print() {
-    std::cout << "(add ";
-    e1->print();
-    std::cout << " ";
-    e2->print();
-    std::cout << ")";
+Expression* Add::copy() {
+    return new Add(e1->copy(), e2->copy());
 }
 
-Expression *Add::eval(Environment &env) {
-    if (e1 == nullptr || e2 == nullptr) {
-        std::cout << "ERROR";
-        exit(0);
-    }
+void Add::print(std::ostream& os) const {
+    os << "(add " << e1 << " " << e2 << ")";
+}
+
+Expression* Add::eval(Environment& env) {
     return new Val(env.getValue(e1->eval(env)) + env.getValue(e2->eval(env)));
+}
+
+bool Add::syntaxCheck() {
+    return (e1 && e2) && e1->syntaxCheck() && e2->syntaxCheck();
 }
 
 Add::~Add() {
@@ -60,26 +63,28 @@ Add::~Add() {
 
 
 // If {
-If::If(Expression *e1, Expression *e2, Expression *eThen, Expression *eElse) : e1(e1), e2(e2), e_then(eThen),
+If::If(Expression* e1, Expression* e2, Expression* eThen, Expression* eElse) : e1(e1), e2(e2), e_then(eThen),
                                                                                e_else(eElse) {}
 
-void If::print() {
-    std::cout << "(if ";
-    e1->print();
-    std::cout << " ";
-    e2->print();
-    std::cout << " then ";
-    e_then->print();
-    std::cout << " else ";
-    e_else->print();
-    std::cout << ")";
+Expression* If::copy() {
+    return new If(e1->copy(), e2->copy(),
+                  e_then->copy(), e_else->copy());
 }
 
-Expression *If::eval(Environment &env) {
+void If::print(std::ostream& os) const {
+    os << "(if " << e1 << " " << e2 << " then " << e_then << " else " << e_else << ")";
+}
+
+Expression* If::eval(Environment& env) {
     if (env.getValue(e1->eval(env)) > env.getValue(e2->eval(env)))
         return e_then->eval(env);
     else
         return e_else->eval(env);
+}
+
+bool If::syntaxCheck() {
+    return (e1 && e2 && e_then && e_else) && e1->syntaxCheck() && e2->syntaxCheck() &&
+           e_then->syntaxCheck() && e_else->syntaxCheck();
 }
 
 If::~If() {
@@ -92,26 +97,26 @@ If::~If() {
 
 
 // Let {
-Let::Let(std::string id, Expression *eValue, Expression *e_body) : id(std::move(id)), e_value(eValue), e_body(e_body) {}
+Let::Let(std::string id, Expression* eValue, Expression* e_body) : id(std::move(id)), e_value(eValue), e_body(e_body) {}
 
-void Let::print() {
-    std::cout << "(let " << id << " = ";
-    e_value->print();
-    std::cout << " in ";
-    e_body->print();
-    std::cout << ")";
+Expression* Let::copy() {
+    return new Let(id, e_value->copy(), e_body->copy());
 }
 
-Expression *Let::eval(Environment &env) {
-    if (e_value == nullptr || e_body == nullptr) {
-        std::cout << "ERROR";
-        exit(0);
-    }
+void Let::print(std::ostream& os) const {
+    os << "(let " + id + " = " << e_value << " in " << e_body << ")";
+}
+
+Expression* Let::eval(Environment& env) {
     int scope_num = env.getNewScope();
     env.addNewPair(scope_num, id, e_value->eval(env));
-    auto *exp = e_body->eval(env);
+    auto* exp = e_body->eval(env);
     env.clearScope(scope_num);
     return exp;
+}
+
+bool Let::syntaxCheck() {
+    return (e_value && e_body) && e_value->syntaxCheck() && e_body->syntaxCheck();
 }
 
 Let::~Let() {
@@ -122,57 +127,91 @@ Let::~Let() {
 
 
 // Function {
-Function::Function(std::string &id, Expression *fBody) : id(std::move(id)), f_body(fBody) {}
+Function::Function(std::string id, Expression* fBody) : id(std::move(id)), f_body(fBody), lexicalEnv(nullptr) {}
 
-void Function::print() {
-    std::cout << "(function " << id << " ";
-    f_body->print();
-    std::cout << ")";
+Function::Function(const Function& function) : id(function.id), f_body(function.f_body->copy()) {
+    if (function.lexicalEnv) {
+        *lexicalEnv = *function.lexicalEnv;
+        for (auto& elem : lexicalEnv->list) {
+            if (elem.expression != this)
+                elem.expression = elem.expression->copy();
+            else
+                elem.expression = this;
+        }
+    }
 }
 
-Expression *Function::eval(Environment &env) {
-    return this;
+Expression* Function::copy() {
+    return new Function(id, f_body->copy());
 }
 
-std::string &Function::getId() {
+void Function::print(std::ostream& os) const {
+    os << "(function " + id + " " << f_body << ")";
+}
+
+Expression* Function::eval(Environment& env) {
+    return new Function(*this);
+}
+
+std::string& Function::getId() {
     return id;
 }
 
-Expression *Function::getFBody() {
-    if (f_body == nullptr){
-            std::cout << "ERROR";
-            exit(0);
+void Function::copyLexEnv(Environment* lexEnv) {
+    lexicalEnv = new Environment(*lexEnv);
+    for (auto& elem : lexicalEnv->list) {
+        if (elem.expression != this)
+            elem.expression = elem.expression->copy();
     }
+}
+
+Expression* Function::getFBody() {
     return f_body;
+}
+
+bool Function::syntaxCheck() {
+    return !id.empty() && f_body && f_body->syntaxCheck();
 }
 
 Function::~Function() {
     delete f_body;
+    if (lexicalEnv)
+        for (auto& trio : lexicalEnv->list)
+            if (trio.expression == this)
+                trio.expression = nullptr;
+    delete lexicalEnv;
 }
 // Function }
 
 
 // Call {
-Call::Call(Expression *fExpr, Expression *argExpr) : f_expr(fExpr), arg_expr(argExpr) {}
+Call::Call(Expression* fExpr, Expression* argExpr) : f_expr(fExpr), arg_expr(argExpr) {}
 
-Expression *Call::eval(Environment &env) {
-    try {
-        auto &function = dynamic_cast<Function &>(*f_expr->eval(env));
-        int scope_num = env.getNewScope();
-        env.addNewPair(scope_num, function.getId(), arg_expr->eval(env));
-        auto *exp = function.getFBody()->eval(env);
-        env.clearScope(scope_num);
-        return exp;
-    } catch (std::bad_cast &ex) {}
-    return nullptr;
+Expression* Call::copy() {
+    return new Call(f_expr->copy(), arg_expr->copy());
 }
 
-void Call::print() {
-    std::cout << "(call ";
-    f_expr->print();
-    std::cout << " ";
-    arg_expr->print();
-    std::cout << ")";
+Expression* Call::eval(Environment& env) {
+    try {
+        auto& function = dynamic_cast<Function&>(*f_expr->eval(env));
+        int scope_num = function.lexicalEnv->getNewScope();
+        function.lexicalEnv->addNewPair(scope_num, function.getId(), arg_expr->eval(env));
+        auto* exp = function.getFBody()->eval(*function.lexicalEnv);
+        function.lexicalEnv->clearScope(scope_num);
+        return exp;
+    }
+    catch (std::bad_cast& ex) {
+        throw std::invalid_argument(std::string("Invalid expression type! \nExpected: function\nGiven: ")
+                                    + typeid(f_expr).name() + ".");
+    }
+}
+
+void Call::print(std::ostream& os) const {
+    os << "(call " << f_expr << " " << arg_expr << ")";
+}
+
+bool Call::syntaxCheck() {
+    return (f_expr && arg_expr) && f_expr->syntaxCheck() && arg_expr->syntaxCheck();
 }
 
 Call::~Call() {
@@ -182,25 +221,31 @@ Call::~Call() {
 // Call }
 
 // Set {
-Set::Set(std::string id, Expression *e_val) : id(std::move(id)), e_val(e_val){}
+Set::Set(std::string id, Expression* e_val) : id(std::move(id)), e_val(e_val) {}
 
-Expression *Set::eval(Environment &env) {
+Expression* Set::copy() {
+    return new Set(id, e_val->copy());
+}
+
+Expression* Set::eval(Environment& env) {
     env.setToStack(this);
     return this;
 }
 
-void Set::print() {
-    std::cout << "(set " << id << " ";
-    e_val->print();
-    std::cout << ")";
+void Set::print(std::ostream& os) const {
+    os << "(set " << e_val << ")";
 }
 
-const std::string &Set::getId() const {
+const std::string& Set::getId() const {
     return id;
 }
 
-Expression *Set::getEVal() const {
+Expression* Set::getEVal() const {
     return e_val;
+}
+
+bool Set::syntaxCheck() {
+    return e_val && e_val->syntaxCheck();
 }
 
 Set::~Set() {
@@ -209,30 +254,41 @@ Set::~Set() {
 // Set }
 
 // Block {
-Block::Block(std::vector<Expression *> &vector) : exp_list(std::move(vector)) { }
+Block::Block(std::vector<Expression*> vector) : exp_list(std::move(vector)) {}
 
-Expression *Block::eval(Environment &env) {
-    Expression *return_exp;
-    for (auto elem: exp_list) {
+Expression* Block::copy() {
+    std::vector<Expression*> t = exp_list;
+    for (auto& elem : t)
+        elem = elem->copy();
+    return new Block(t);
+}
+
+Expression* Block::eval(Environment& env) {
+    Expression* return_exp = nullptr;
+    for (auto elem : exp_list) {
         return_exp = elem->eval(env);
     }
     return return_exp;
 }
 
-void Block::print() {
-    std::cout << "(block";
-    for (auto expression: exp_list) {
-        std::cout << " ";
-        expression->print();
-    }
-    std::cout << ")";
+void Block::print(std::ostream& os) const {
+    os << "(block";
+    for (auto expression : exp_list)
+        os << " " << expression;
+    os << ")";
+}
+
+bool Block::syntaxCheck() {
+    if (exp_list.empty())
+        return false;
+
+    return std::all_of(exp_list.begin(), exp_list.end(), [](Expression* expression) { return expression; });
 }
 
 Block::~Block() {
-    for (Expression *exp: exp_list) {
+    for (Expression* exp : exp_list) {
         delete exp;
+        exp = nullptr;
     }
 }
 // Block }
-
-
