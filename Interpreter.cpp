@@ -1,9 +1,5 @@
 #include "Interpreter.h"
 
-Interpreter::Interpreter() : Interpreter("input.txt", "output.txt") {}
-
-Interpreter::Interpreter(const char* inputFileName) : Interpreter(inputFileName, "output.txt") {}
-
 Interpreter::Interpreter(const char* inputFileName, const char* outputFileName) : input(inputFileName),
                                                                                   output(outputFileName) {}
 

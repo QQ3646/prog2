@@ -7,11 +7,7 @@ class Interpreter {
     Expression* main = nullptr;
     Expression* eval_main = nullptr;
 public:
-    Interpreter();
-
-    Interpreter(const char* inputFileName);
-
-    Interpreter(const char* inputFileName, const char* outputFileName);
+    Interpreter(const char* inputFileName = "input.txt", const char* outputFileName = "output.txt");
 
     Interpreter& read();
 

@@ -36,7 +36,8 @@ public:
                     retExpr = new Var(id);
                 }
                 else if (t == "add") {
-                    retExpr = new Add(operator()(), operator()());
+                    Expression *e_l = operator()(), *e_r = operator()();
+                    retExpr = new Add(e_l, e_r);
                 }
                 else if (t == "if") {
                     Expression* leftEx = operator()(), * rightEx = operator()();
@@ -79,7 +80,8 @@ public:
                     std::string id;
                     input_s >> id;
 
-                    retExpr = new Function(id, operator()());
+                    Expression *b = operator()();
+                    retExpr = new Function(id, b);
                 }
                 else if (t == "call") {
                     auto* f_e = operator()();
