@@ -18,8 +18,9 @@ std::vector<std::string> checked_url;
 std::atomic<int> counter{0};
 std::condition_variable s_m;
 std::mutex stack_mutex;
-std::atomic<bool> work_finished;
-
+std::mutex check_mutex;
+std::atomic<int> working_threads;
+std::atomic<int> counter_new = 1;
 
 std::string readAllFile(std::string &name_of_file) {
     std::fstream input_stream(WORK_DIRECTORY + name_of_file);
@@ -39,7 +40,6 @@ void saveValueFile(std::string &name_of_file, std::string &value) {
 }
 
 void findAndNext(std::string &name_of_file) {
-    work_finished = false;
     std::string file_value = readAllFile(name_of_file);
     saveValueFile(name_of_file, file_value);
 
@@ -58,33 +58,47 @@ void findAndNext(std::string &name_of_file) {
             t_url = t_url.substr(p + 7);
         }
 
-        stack_mutex.lock();
-        if(std::find(checked_url.begin(), checked_url.end(), t_url) == checked_url.end()) {
-            url.push(t_url);
-            checked_url.push_back(t_url);
+        {
+            std::unique_lock<std::mutex> l(check_mutex);
+            if (std::find(checked_url.begin(), checked_url.end(), t_url) == checked_url.end()) {
+                {
+                    std::lock_guard<std::mutex> x(stack_mutex);
+                    url.push(t_url);
+                }
+                checked_url.push_back(t_url);
+                check_mutex.unlock();
+                ++counter_new;
+            }
         }
-        stack_mutex.unlock();
 
-        s_m.notify_all();
     }
-    work_finished = true;
+    s_m.notify_all();
+    --working_threads;
 }
 
 void waitingTreads() {
-    while (!work_finished.load() || !url.empty()) {
-        std::unique_lock<std::mutex> l(stack_mutex);
-        s_m.wait(l, []() -> bool { return !url.empty(); });
+    while (working_threads > 0 || !url.empty()) {
+        std::string c_url;
+        {
+            if (counter == counter_new)
+                return;
+            std::unique_lock<std::mutex> l(stack_mutex);
+            s_m.wait(l, []() -> bool { return !url.empty() || counter == counter_new; });
 
-        std::string c_url = url.top();
-        url.pop();
+            if (counter_new == counter) {
+                return;
+            }
 
-        l.unlock();
+            c_url = url.top();
+            url.pop();
+        }
+        ++working_threads;
         findAndNext(c_url);
+
     }
 }
 
 int main() {
-    auto start_time = std::chrono::high_resolution_clock::now();
 
     std::string start_url;
     size_t thread_count;
@@ -95,19 +109,23 @@ int main() {
 
     url.push(start_url);
     checked_url.push_back(start_url);
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     for (int i = 0; i < thread_count; ++i) {
         threads.emplace_back(waitingTreads);
     }
 
-    while(!work_finished.load() || !url.empty()) {}
-
-    for (int i = 0; i < thread_count; ++i) {
-        threads[i].join();
+    while(working_threads > 0 || !url.empty()) {
+        std::this_thread::sleep_for(std::chrono::microseconds (1000));
+        s_m.notify_all();
     }
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()
                                                                           - start_time);
+
+    for (int i = 0; i < thread_count; ++i) {
+        threads[i].join();
+    }
     std::cout << counter << " " << duration.count();
     return 0;
 }
